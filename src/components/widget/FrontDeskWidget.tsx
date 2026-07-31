@@ -104,6 +104,16 @@ export const FrontDeskWidget: React.FC<FrontDeskWidgetProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
+  useEffect(() => {
+    try {
+      window.parent.postMessage({
+        type: 'AIFRONTDESK_RESIZE',
+        isOpen,
+        clientId: client.id
+      }, '*');
+    } catch (e) {}
+  }, [isOpen, client.id]);
+
   const toggleOpen = () => {
     const next = !isOpen;
     setIsOpen(next);
@@ -249,21 +259,10 @@ export const FrontDeskWidget: React.FC<FrontDeskWidgetProps> = ({
   if (mode === 'floating' && !isOpen) {
     return (
       <div
-        className={`fixed bottom-6 ${
-          client.widgetPosition === 'bottom-left' ? 'left-6' : 'right-6'
-        } z-50 flex flex-col items-end gap-2`}
+        className={`fixed bottom-3 ${
+          client.widgetPosition === 'bottom-left' ? 'left-3' : 'right-3'
+        } z-50 flex items-center justify-center`}
       >
-        {/* Tooltip Welcome Banner */}
-        {hasUnread && (
-          <div
-            onClick={toggleOpen}
-            className="cursor-pointer bg-white text-slate-800 text-xs sm:text-sm font-medium px-4 py-2.5 rounded-2xl shadow-xl border border-slate-200/80 flex items-center gap-2 max-w-xs transition-transform hover:scale-105 animate-bounce"
-          >
-            <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-            <span className="line-clamp-2">{client.welcomeMessage}</span>
-          </div>
-        )}
-
         <button
           onClick={toggleOpen}
           style={bubbleStyle}
@@ -284,9 +283,7 @@ export const FrontDeskWidget: React.FC<FrontDeskWidgetProps> = ({
     <div
       className={`${
         mode === 'floating'
-          ? `fixed bottom-6 ${
-              client.widgetPosition === 'bottom-left' ? 'left-6' : 'right-6'
-            } w-[390px] max-w-[95vw] h-[640px] max-h-[85vh] z-50 shadow-2xl rounded-2xl border border-slate-200`
+          ? 'fixed inset-0 w-full h-full z-50 shadow-2xl rounded-2xl border border-slate-200'
           : 'w-full h-full min-h-[580px] max-h-[700px] border border-slate-200 rounded-2xl shadow-md'
       } bg-white flex flex-col overflow-hidden transition-all duration-300`}
     >

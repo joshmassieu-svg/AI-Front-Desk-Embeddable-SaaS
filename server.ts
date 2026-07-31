@@ -58,8 +58,8 @@ async function startServer() {
   var container = document.createElement("div");
   container.id = "ai-frontdesk-container-" + CLIENT_ID;
   container.style.position = "fixed";
-  container.style.bottom = "24px";
-  container.style.right = "24px";
+  container.style.bottom = "16px";
+  container.style.right = "16px";
   container.style.zIndex = "999999";
   container.style.fontFamily = "system-ui, -apple-system, sans-serif";
 
@@ -68,27 +68,33 @@ async function startServer() {
   iframe.src = BASE_URL + "/?embed=true&clientId=" + encodeURIComponent(CLIENT_ID);
   iframe.style.border = "none";
   iframe.style.background = "transparent";
-  iframe.style.width = "400px";
-  iframe.style.height = "640px";
+  iframe.style.width = "90px";
+  iframe.style.height = "90px";
   iframe.style.maxHeight = "90vh";
   iframe.style.maxWidth = "95vw";
-  iframe.style.borderRadius = "20px";
-  iframe.style.boxShadow = "0 20px 40px rgba(0,0,0,0.18)";
+  iframe.style.borderRadius = "0px";
+  iframe.style.boxShadow = "none";
   iframe.style.transition = "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)";
   iframe.style.colorScheme = "normal";
   iframe.allow = "microphone; clipboard-write";
 
-  // Responsive mobile adjustment
-  function updateSize() {
-    if (window.innerWidth < 480) {
-      iframe.style.width = "calc(100vw - 32px)";
-      iframe.style.height = "calc(100vh - 120px)";
-      container.style.bottom = "16px";
-      container.style.right = "16px";
+  window.addEventListener("message", function(e) {
+    var data = e.data;
+    if (data && data.type === "AIFRONTDESK_RESIZE") {
+      var isMobile = window.innerWidth < 480;
+      if (data.isOpen) {
+        iframe.style.width = isMobile ? "calc(100vw - 32px)" : "400px";
+        iframe.style.height = isMobile ? "calc(100vh - 80px)" : "640px";
+        container.style.bottom = isMobile ? "16px" : "24px";
+        container.style.right = isMobile ? "16px" : "24px";
+      } else {
+        iframe.style.width = "90px";
+        iframe.style.height = "90px";
+        container.style.bottom = "16px";
+        container.style.right = "16px";
+      }
     }
-  }
-  window.addEventListener("resize", updateSize);
-  updateSize();
+  });
 
   container.appendChild(iframe);
   document.body.appendChild(container);
