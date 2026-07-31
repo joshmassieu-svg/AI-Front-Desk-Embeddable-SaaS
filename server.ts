@@ -22,13 +22,24 @@ async function startServer() {
   const app = express();
   app.use(express.json());
 
+  // Enable CORS for embeddable widgets across all client domains
+  app.use((req: Request, res: Response, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    if (req.method === 'OPTIONS') {
+      return res.status(200).end();
+    }
+    next();
+  });
+
   // API Route: Health Check
   app.get('/api/health', (req: Request, res: Response) => {
     res.json({ status: 'ok', time: new Date().toISOString() });
   });
 
   // API Route: Dynamic embed.js script generator for Client Websites
-  app.get('/api/embed.js', (req: Request, res: Response) => {
+  app.get(['/api/embed.js', '/embed.js'], (req: Request, res: Response) => {
     const clientId = (req.query.client as string) || 'cl_apex_dental';
     const host = req.headers.host || 'localhost:3000';
     const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
@@ -94,15 +105,22 @@ async function startServer() {
     }
 
     try {
+      let targetUrl = url.trim();
+      if (!/^https?:\/\//i.test(targetUrl)) {
+        targetUrl = 'https://' + targetUrl;
+      }
+
       let htmlContent = '';
       let pageTitle = clientName || 'Client Website';
 
       try {
-        const fetchRes = await fetch(url, {
+        const fetchRes = await fetch(targetUrl, {
           headers: {
-            'User-Agent': 'Mozilla/5.0 (compatible; AIFrontDeskBot/1.0; +https://example.com)'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9'
           },
-          signal: AbortSignal.timeout(8000)
+          signal: AbortSignal.timeout(10000)
         });
         if (fetchRes.ok) {
           htmlContent = await fetchRes.text();
@@ -171,10 +189,11 @@ Respond ONLY with valid JSON.`;
           });
 
           if (aiResponse.text) {
-            const parsed = JSON.parse(aiResponse.text);
+            const cleanJson = aiResponse.text.replace(/^```json\s*/i, '').replace(/\s*```$/, '').trim();
+            const parsed = JSON.parse(cleanJson);
             return res.status(200).json({
               success: true,
-              url,
+              url: targetUrl,
               title: pageTitle,
               crawledAt: new Date().toISOString(),
               wordCount: cleanText.split(' ').length,
@@ -231,7 +250,7 @@ Respond ONLY with valid JSON.`;
 
       return res.status(200).json({
         success: true,
-        url,
+        url: targetUrl,
         title: pageTitle,
         crawledAt: new Date().toISOString(),
         wordCount: cleanText.length > 0 ? cleanText.split(' ').length : 380,

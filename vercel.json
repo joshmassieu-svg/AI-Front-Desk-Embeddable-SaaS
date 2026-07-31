@@ -1,0 +1,35 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/embed.js",
+      "destination": "/api/embed.js"
+    },
+    {
+      "source": "/embed.js",
+      "destination": "/embed.js"
+    },
+    {
+      "source": "/((?!api/|embed\\.js).*)",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(api/embed\\.js|embed\\.js)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600"
+        }
+      ]
+    }
+  ]
+}

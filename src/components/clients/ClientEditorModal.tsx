@@ -114,7 +114,8 @@ export const ClientEditorModal: React.FC<ClientEditorModalProps> = ({
         setCrawlStatus(`Crawl error: ${data.error || 'Could not access target domain'}`);
       }
     } catch (err: any) {
-      setCrawlStatus('Crawl error: Unable to connect to target website.');
+      console.error('Crawl request error:', err);
+      setCrawlStatus(`Crawl error: ${err.message || 'Server temporarily restarting or network unreachable. Please try again in a few seconds.'}`);
     } finally {
       setIsCrawling(false);
     }
