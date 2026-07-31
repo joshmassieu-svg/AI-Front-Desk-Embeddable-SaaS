@@ -1,0 +1,56 @@
+{
+  "schemaVersion": "1.0.0",
+  "entities": [
+    {
+      "name": "ClientWebsite",
+      "collection": "clients",
+      "description": "Stores managed client websites and widget configurations",
+      "fields": [
+        { "name": "name", "type": "string", "description": "Name of the client business" },
+        { "name": "domain", "type": "string", "description": "Website domain" },
+        { "name": "industry", "type": "string", "description": "Industry category" },
+        { "name": "primaryColor", "type": "string", "description": "Primary theme hex color" },
+        { "name": "greeting", "type": "string", "description": "Initial widget greeting text" }
+      ]
+    },
+    {
+      "name": "LeadItem",
+      "collection": "leads",
+      "description": "Captured visitor inquiries and lead forms",
+      "fields": [
+        { "name": "clientId", "type": "string", "description": "Associated client ID" },
+        { "name": "visitorName", "type": "string", "description": "Name of visitor" },
+        { "name": "email", "type": "string", "description": "Email address" },
+        { "name": "reasonOrInquiry", "type": "string", "description": "Inquiry details" },
+        { "name": "status", "type": "string", "description": "Lead status: new, contacted, qualified, booked" },
+        { "name": "createdAt", "type": "string", "description": "ISO timestamp" }
+      ]
+    },
+    {
+      "name": "AppointmentItem",
+      "collection": "appointments",
+      "description": "Booked appointments from embed widgets",
+      "fields": [
+        { "name": "clientId", "type": "string", "description": "Associated client ID" },
+        { "name": "serviceName", "type": "string", "description": "Booked service name" },
+        { "name": "visitorName", "type": "string", "description": "Visitor full name" },
+        { "name": "visitorEmail", "type": "string", "description": "Visitor email" },
+        { "name": "date", "type": "string", "description": "Appointment date" },
+        { "name": "time", "type": "string", "description": "Appointment time" },
+        { "name": "status", "type": "string", "description": "Appointment status" }
+      ]
+    },
+    {
+      "name": "Conversation",
+      "collection": "conversations",
+      "description": "AI Front Desk widget chat transcripts",
+      "fields": [
+        { "name": "clientId", "type": "string", "description": "Associated client ID" },
+        { "name": "visitorName", "type": "string", "description": "Visitor name" },
+        { "name": "summary", "type": "string", "description": "Summary of chat" },
+        { "name": "lastActive", "type": "string", "description": "ISO timestamp" },
+        { "name": "messages", "type": "array", "description": "Chat messages array" }
+      ]
+    }
+  ]
+}

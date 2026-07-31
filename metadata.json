@@ -1,0 +1,6 @@
+{
+  "name": "AI Front Desk Embeddable SaaS",
+  "description": "An embeddable AI front desk assistant platform for client websites with customizable personas, knowledge base, appointment booking, lead capture, and interactive embed test sandboxes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
