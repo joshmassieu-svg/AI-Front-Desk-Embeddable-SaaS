@@ -446,7 +446,7 @@ export const WebsiteSimulator: React.FC<WebsiteSimulatorProps> = ({
 
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Widget Corner Position
+                  Widget Position
                 </label>
                 <select
                   value={editPosition}
@@ -455,6 +455,7 @@ export const WebsiteSimulator: React.FC<WebsiteSimulatorProps> = ({
                 >
                   <option value="bottom-right">Bottom Right corner</option>
                   <option value="bottom-left">Bottom Left corner</option>
+                  <option value="bottom-center">Bottom Center</option>
                 </select>
               </div>
             </div>

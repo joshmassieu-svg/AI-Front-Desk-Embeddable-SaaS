@@ -7,7 +7,7 @@ export type IndustryType =
   | 'agency'
   | 'custom';
 
-export type WidgetPosition = 'bottom-right' | 'bottom-left';
+export type WidgetPosition = 'bottom-right' | 'bottom-left' | 'bottom-center';
 
 export interface ServiceItem {
   id: string;

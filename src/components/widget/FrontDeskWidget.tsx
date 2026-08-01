@@ -349,7 +349,11 @@ export const FrontDeskWidget: React.FC<FrontDeskWidgetProps> = ({
     return (
       <div
         className={`fixed bottom-3 ${
-          client.widgetPosition === 'bottom-left' ? 'left-3' : 'right-3'
+          client.widgetPosition === 'bottom-left'
+            ? 'left-3'
+            : client.widgetPosition === 'bottom-center'
+            ? 'left-1/2 -translate-x-1/2'
+            : 'right-3'
         } z-50 flex items-center justify-center`}
       >
         {launcher === 'ask_ai_bar' ? (() => {
@@ -477,7 +481,13 @@ export const FrontDeskWidget: React.FC<FrontDeskWidgetProps> = ({
     <div
       className={`${
         mode === 'floating'
-          ? `fixed inset-0 w-full h-full z-50 shadow-2xl ${radiusClass} border border-slate-200`
+          ? `fixed bottom-20 ${
+              client.widgetPosition === 'bottom-left'
+                ? 'left-4'
+                : client.widgetPosition === 'bottom-center'
+                ? 'left-1/2 -translate-x-1/2'
+                : 'right-4'
+            } w-[380px] max-w-[95vw] h-[600px] max-h-[82vh] z-50 shadow-2xl ${radiusClass} border border-slate-200`
           : `w-full h-full min-h-[580px] max-h-[700px] border border-slate-200 ${radiusClass} shadow-md`
       } bg-white flex flex-col overflow-hidden transition-all duration-300`}
     >

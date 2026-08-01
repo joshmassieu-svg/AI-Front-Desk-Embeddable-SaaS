@@ -312,6 +312,7 @@ export const ClientEditorModal: React.FC<ClientEditorModalProps> = ({
                   >
                     <option value="bottom-right">Bottom Right Corner</option>
                     <option value="bottom-left">Bottom Left Corner</option>
+                    <option value="bottom-center">Bottom Center</option>
                   </select>
                 </div>
               </div>
