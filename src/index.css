@@ -1,1 +1,73 @@
 @import "tailwindcss";
+
+@keyframes conicSpin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes neonShift {
+  0%, 100% {
+    filter: drop-shadow(0 0 16px rgba(13, 148, 136, 0.75)) drop-shadow(0 0 28px rgba(139, 92, 246, 0.5));
+  }
+  50% {
+    filter: drop-shadow(0 0 22px rgba(236, 72, 153, 0.85)) drop-shadow(0 0 35px rgba(59, 130, 246, 0.65));
+  }
+}
+
+@keyframes shimmerSweep {
+  0% {
+    transform: translateX(-150%) skewX(-25deg);
+  }
+  100% {
+    transform: translateX(350%) skewX(-25deg);
+  }
+}
+
+@keyframes aiSignalPulse {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+.animate-conic-spin-slow {
+  animation: conicSpin 8s linear infinite;
+}
+.animate-conic-spin {
+  animation: conicSpin 4s linear infinite;
+}
+.animate-conic-spin-fast {
+  animation: conicSpin 1.8s linear infinite;
+}
+
+.animate-neon-glow-slow {
+  animation: neonShift 6s ease-in-out infinite;
+}
+.animate-neon-glow {
+  animation: neonShift 4s ease-in-out infinite;
+}
+.animate-neon-glow-fast {
+  animation: neonShift 1.8s ease-in-out infinite;
+}
+
+.animate-shimmer-sweep-slow {
+  animation: shimmerSweep 6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+.animate-shimmer-sweep {
+  animation: shimmerSweep 3.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+.animate-shimmer-sweep-fast {
+  animation: shimmerSweep 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-ai-signal {
+  animation: aiSignalPulse 2s ease-in-out infinite;
+}

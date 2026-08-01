@@ -14,7 +14,8 @@ import {
   AppointmentStatus 
 } from './types';
 import { ApiService } from './services/api';
-import { Navigation } from './components/Navigation';
+import { Sidebar } from './components/Sidebar';
+import { TopHeader } from './components/TopHeader';
 import { ClientListView } from './components/clients/ClientListView';
 import { ClientEditorModal } from './components/clients/ClientEditorModal';
 import { WebsiteSimulator } from './components/embed/WebsiteSimulator';
@@ -163,9 +164,9 @@ export default function App() {
   const unreadLeadsCount = leads.filter(l => l.status === 'new').length;
 
   return (
-    <div className="min-h-screen bg-slate-100/70 text-slate-900 font-sans flex flex-col">
-      {/* Top SaaS Navigation bar */}
-      <Navigation
+    <div className="min-h-screen bg-slate-100/70 text-slate-900 font-sans flex flex-col lg:flex-row">
+      {/* Left Sidebar Menu */}
+      <Sidebar
         activeTab={activeTab}
         onTabChange={setActiveTab}
         clients={clients}
@@ -178,8 +179,22 @@ export default function App() {
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
       />
 
-      {/* Main Content Areas */}
-      <main className="flex-1 flex flex-col">
+      {/* Main Workspace Column */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Professional Desktop Top Bar */}
+        <TopHeader
+          activeTab={activeTab}
+          clients={clients}
+          selectedClientId={selectedClientId}
+          onSelectClient={setSelectedClientId}
+          onNewClient={() => setEditorModalClient('new')}
+          onOpenEmbedModal={(client) => setEmbedModalClient(client)}
+          currentUser={currentUser}
+          onOpenAuthModal={() => setIsAuthModalOpen(true)}
+        />
+
+        {/* Main Content Areas */}
+        <main className="flex-1 flex flex-col">
         {activeTab === 'clients' && (
           <ClientListView
             clients={clients}
@@ -247,6 +262,7 @@ export default function App() {
           />
         )}
       </main>
+    </div>
 
       {/* Modal 1: Embed Snippet Generator Modal */}
       {embedModalClient && (

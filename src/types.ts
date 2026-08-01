@@ -47,6 +47,34 @@ export type WidgetTemplateType =
 
 export type LauncherStyleType = 'circle' | 'pill' | 'avatar' | 'ask_ai_bar';
 
+export type AskAiBarPalette = 
+  | 'cyberpunk' 
+  | 'emerald_teal' 
+  | 'sunset_fire' 
+  | 'purple_indigo' 
+  | 'brand_match' 
+  | 'monochrome';
+
+export type AskAiBarAnimSpeed = 'slow' | 'normal' | 'fast' | 'static';
+
+export interface AskAiBarConfig {
+  neonGlow: boolean;
+  neonPalette: AskAiBarPalette;
+  conicRotation: boolean;
+  conicSpeed: AskAiBarAnimSpeed;
+  shimmerEffect: boolean;
+  shimmerSpeed: AskAiBarAnimSpeed;
+}
+
+export const DEFAULT_ASK_AI_BAR_CONFIG: AskAiBarConfig = {
+  neonGlow: true,
+  neonPalette: 'cyberpunk',
+  conicRotation: true,
+  conicSpeed: 'normal',
+  shimmerEffect: true,
+  shimmerSpeed: 'normal',
+};
+
 export interface ClientWebsite {
   id: string;
   name: string;
@@ -60,6 +88,7 @@ export interface ClientWebsite {
   widgetPosition: WidgetPosition;
   widgetTemplate?: WidgetTemplateType;
   launcherStyle?: LauncherStyleType;
+  askAiBarConfig?: AskAiBarConfig;
   widgetRadius?: 'rounded-none' | 'rounded-lg' | 'rounded-2xl' | 'rounded-3xl';
   widgetTitle: string;
   personaName: string;

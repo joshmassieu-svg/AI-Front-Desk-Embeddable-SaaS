@@ -424,6 +424,12 @@ export const ClientEditorModal: React.FC<ClientEditorModalProps> = ({
                   <option value="circle">Circle Icon Button</option>
                   <option value="avatar">Assistant Avatar Circle Button</option>
                 </select>
+                {launcherStyle === 'ask_ai_bar' && (
+                  <div className="mt-1.5 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-teal-50 border border-teal-200/80 text-[11px] text-teal-800 font-medium">
+                    <Sparkles className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                    <span>Includes Neon Glow, Conic Gradient Rotation &amp; Active AI Shimmer</span>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">

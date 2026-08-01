@@ -24,7 +24,9 @@ import {
   ChatMessage, 
   ServiceItem, 
   AppointmentItem, 
-  LeadItem 
+  LeadItem,
+  DEFAULT_ASK_AI_BAR_CONFIG,
+  AskAiBarConfig
 } from '../../types';
 import { ApiService } from '../../services/api';
 
@@ -36,6 +38,74 @@ interface FrontDeskWidgetProps {
   onLeadCaptured?: (lead: LeadItem) => void;
   defaultOpen?: boolean;
 }
+
+const getAskAiBarPaletteStyles = (palette: string = 'cyberpunk', primaryColor: string = '#0d9488') => {
+  switch (palette) {
+    case 'emerald_teal':
+      return {
+        outerGradientClass: 'from-emerald-400 via-teal-500 via-cyan-500 to-emerald-400',
+        conicGradientStyle: {
+          backgroundImage: 'conic-gradient(from 0deg, #10b981, #14b8a6, #06b6d4, #0d9488, #10b981)'
+        }
+      };
+    case 'sunset_fire':
+      return {
+        outerGradientClass: 'from-amber-400 via-orange-500 via-rose-500 via-purple-500 to-amber-400',
+        conicGradientStyle: {
+          backgroundImage: 'conic-gradient(from 0deg, #f59e0b, #f97316, #e11d48, #8b5cf6, #f59e0b)'
+        }
+      };
+    case 'purple_indigo':
+      return {
+        outerGradientClass: 'from-indigo-500 via-purple-500 via-pink-500 via-violet-500 to-indigo-500',
+        conicGradientStyle: {
+          backgroundImage: 'conic-gradient(from 0deg, #6366f1, #8b5cf6, #ec4899, #7c3aed, #6366f1)'
+        }
+      };
+    case 'monochrome':
+      return {
+        outerGradientClass: 'from-slate-300 via-slate-500 via-slate-700 to-slate-300',
+        conicGradientStyle: {
+          backgroundImage: 'conic-gradient(from 0deg, #cbd5e1, #64748b, #334155, #cbd5e1)'
+        }
+      };
+    case 'brand_match':
+      return {
+        outerGradientClass: 'from-white/40 via-teal-400/80 to-white/40',
+        conicGradientStyle: {
+          backgroundImage: `conic-gradient(from 0deg, ${primaryColor}, #ffffff, ${primaryColor}, #3b82f6, ${primaryColor})`
+        }
+      };
+    case 'cyberpunk':
+    default:
+      return {
+        outerGradientClass: 'from-teal-500 via-indigo-500 via-purple-500 via-pink-500 to-teal-500',
+        conicGradientStyle: {
+          backgroundImage: 'conic-gradient(from 0deg, #0d9488, #3b82f6, #8b5cf6, #ec4899, #f43f5e, #f97316, #10b981, #0d9488)'
+        }
+      };
+  }
+};
+
+const getSpeedClass = (type: 'conic' | 'neon' | 'shimmer', speed: string = 'normal', enabled: boolean = true) => {
+  if (!enabled || speed === 'static') return '';
+  if (type === 'conic') {
+    if (speed === 'slow') return 'animate-conic-spin-slow';
+    if (speed === 'fast') return 'animate-conic-spin-fast';
+    return 'animate-conic-spin';
+  }
+  if (type === 'neon') {
+    if (speed === 'slow') return 'animate-neon-glow-slow';
+    if (speed === 'fast') return 'animate-neon-glow-fast';
+    return 'animate-neon-glow';
+  }
+  if (type === 'shimmer') {
+    if (speed === 'slow') return 'animate-shimmer-sweep-slow';
+    if (speed === 'fast') return 'animate-shimmer-sweep-fast';
+    return 'animate-shimmer-sweep';
+  }
+  return '';
+};
 
 // Simple Web Audio chime for welcoming feedback
 function playSoftChime() {
@@ -282,40 +352,85 @@ export const FrontDeskWidget: React.FC<FrontDeskWidgetProps> = ({
           client.widgetPosition === 'bottom-left' ? 'left-3' : 'right-3'
         } z-50 flex items-center justify-center`}
       >
-        {launcher === 'ask_ai_bar' ? (
-          <form
-            onSubmit={handleAskAiBarSubmit}
-            className="w-[280px] sm:w-[350px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/90 dark:border-slate-800 shadow-2xl rounded-2xl p-1.5 flex items-center gap-2 transition-all duration-300 hover:shadow-xl hover:border-teal-500/50 group"
-          >
-            <button
-              type="button"
-              onClick={toggleOpen}
-              style={{ backgroundColor: client.primaryColor || '#0d9488' }}
-              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:scale-105 relative"
-              aria-label="Open AI Assistant"
-            >
-              <Sparkles className="w-4 h-4 text-white animate-pulse" />
-              {hasUnread && (
-                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white" />
+        {launcher === 'ask_ai_bar' ? (() => {
+          const cfg = client.askAiBarConfig || DEFAULT_ASK_AI_BAR_CONFIG;
+          const paletteStyles = getAskAiBarPaletteStyles(cfg.neonPalette, client.primaryColor);
+          const neonClass = getSpeedClass('neon', cfg.conicSpeed, cfg.neonGlow);
+          const conicClass = getSpeedClass('conic', cfg.conicSpeed, cfg.conicRotation);
+          const shimmerClass = getSpeedClass('shimmer', cfg.shimmerSpeed, cfg.shimmerEffect);
+
+          return (
+            <div className={`relative group ${neonClass}`}>
+              {/* 1. Gradient Border / Neon Glow: Multi-color shifting edge that mimics futuristic neon */}
+              {cfg.neonGlow && (
+                <div className={`absolute -inset-1.5 bg-gradient-to-r ${paletteStyles.outerGradientClass} rounded-3xl blur-md opacity-75 group-hover:opacity-100 transition-all duration-500 -z-10`} />
               )}
-            </button>
-            <input
-              type="text"
-              value={askAiBarInput}
-              onChange={(e) => setAskAiBarInput(e.target.value)}
-              placeholder={`Ask AI about ${client.name || 'us'}...`}
-              className="w-full text-xs sm:text-sm bg-transparent border-none focus:outline-hidden text-slate-800 dark:text-slate-100 placeholder-slate-400 font-medium px-1.5"
-            />
-            <button
-              type="submit"
-              style={{ color: client.primaryColor || '#0d9488' }}
-              className="px-3 py-2 rounded-xl font-bold text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200 transition-colors flex items-center gap-1.5 shrink-0"
-            >
-              <span>Ask AI</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </form>
-        ) : launcher === 'pill' ? (
+
+              {/* 2. Conic Gradient Rotation: Infinite spinning color loop */}
+              <div className="relative p-[2.5px] rounded-2xl overflow-hidden bg-slate-900 shadow-2xl">
+                <div 
+                  className={`absolute -inset-[100%] ${conicClass} opacity-95 group-hover:opacity-100 transition-all duration-500`}
+                  style={paletteStyles.conicGradientStyle}
+                />
+
+                {/* Inner Search Bar Form */}
+                <form
+                  onSubmit={handleAskAiBarSubmit}
+                  className="relative z-10 w-[290px] sm:w-[380px] bg-slate-950/95 backdrop-blur-xl rounded-[13.5px] p-2 flex items-center gap-2 overflow-hidden"
+                >
+                  {/* 3. Micro-interaction / Shimmer: Subtle light beam sweeping across to signal active AI */}
+                  {cfg.shimmerEffect && (
+                    <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-[13.5px]">
+                      <div className={`absolute top-0 -left-[100%] w-1/2 h-full bg-gradient-to-r from-transparent via-white/15 to-transparent ${shimmerClass}`} />
+                    </div>
+                  )}
+
+                  {/* Left AI Assistant Icon Button with Active Pulse */}
+                  <button
+                    type="button"
+                    onClick={toggleOpen}
+                    style={{ backgroundColor: client.primaryColor || '#0d9488' }}
+                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-md transition-all duration-300 group-hover:scale-105 relative border border-white/20"
+                    aria-label="Open AI Assistant"
+                  >
+                    <Sparkles className="w-4 h-4 text-white animate-ai-signal" />
+                    {hasUnread && (
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-slate-900 animate-pulse" />
+                    )}
+                  </button>
+
+                  {/* Input with AI Active Signal & Typing State */}
+                  <div className="flex-1 relative flex items-center">
+                    <input
+                      type="text"
+                      value={askAiBarInput}
+                      onChange={(e) => setAskAiBarInput(e.target.value)}
+                      placeholder={`Ask AI about ${client.name || 'us'}...`}
+                      className="w-full text-xs sm:text-sm bg-transparent border-none focus:outline-hidden text-slate-100 placeholder-slate-400 font-medium px-2 pr-20"
+                    />
+                    {/* Micro-interaction: Active AI Signal Indicator */}
+                    <div className="absolute right-1 flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-teal-500/15 border border-teal-500/40 pointer-events-none">
+                      <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-ping" />
+                      <span className="text-[9px] font-mono font-bold tracking-wider text-teal-300 uppercase">
+                        AI READY
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Submit / Ask AI Button */}
+                  <button
+                    type="submit"
+                    style={{ backgroundColor: client.primaryColor || '#0d9488' }}
+                    className="px-3.5 py-2 rounded-xl font-bold text-xs text-white shadow-md hover:brightness-110 transition-all flex items-center gap-1.5 shrink-0 border border-white/20 group-hover:shadow-lg"
+                  >
+                    <span>Ask AI</span>
+                    <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+                  </button>
+                </form>
+              </div>
+            </div>
+          );
+        })() : launcher === 'pill' ? (
           <button
             onClick={toggleOpen}
             style={bubbleStyle}
