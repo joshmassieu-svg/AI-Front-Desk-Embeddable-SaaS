@@ -75,7 +75,7 @@ export const Navigation: React.FC<NavigationProps> = ({
               }`}
             >
               <Building2 className="w-4 h-4 text-teal-600" />
-              <span>Client Sites ({clients.length})</span>
+              <span>Website Workspaces ({clients.length})</span>
             </button>
 
             <button
@@ -120,24 +120,27 @@ export const Navigation: React.FC<NavigationProps> = ({
             </button>
           </nav>
 
-          {/* Right Actions: Active Client Selector & Embed Code Button */}
+          {/* Right Actions: Active Workspace Selector & Embed Code Button */}
           <div className="flex items-center gap-2.5">
-            {/* Client Selector Dropdown */}
+            {/* Active Website Workspace Selector Dropdown */}
             <div className="relative group">
-              <label htmlFor="client-selector-select" className="sr-only">Select Client Website</label>
-              <select
-                id="client-selector-select"
-                value={selectedClientId}
-                onChange={(e) => onSelectClient(e.target.value)}
-                className="appearance-none bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-lg pl-3 pr-8 py-1.5 font-medium focus:outline-hidden focus:ring-2 focus:ring-teal-500 cursor-pointer"
-              >
-                {clients.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <label htmlFor="client-selector-select" className="sr-only">Select Website Workspace</label>
+              <div className="flex items-center gap-1.5 bg-slate-100 border border-slate-300/80 rounded-lg pl-3 pr-2 py-1 text-xs font-semibold text-slate-600">
+                <span className="text-[11px] uppercase tracking-wider text-teal-700 font-bold">Workspace:</span>
+                <select
+                  id="client-selector-select"
+                  value={selectedClientId}
+                  onChange={(e) => onSelectClient(e.target.value)}
+                  className="appearance-none bg-transparent text-slate-900 text-sm pl-1 pr-6 py-0.5 font-bold focus:outline-hidden cursor-pointer"
+                >
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.workspaceName || c.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-500 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
             </div>
 
             {/* Embed Code Modal Button */}
@@ -145,21 +148,21 @@ export const Navigation: React.FC<NavigationProps> = ({
               <button
                 onClick={() => onOpenEmbedModal(currentClient)}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium rounded-lg shadow-xs transition-colors"
-                title="Get installation embed snippet for this client website"
+                title="Get installation embed snippet for this workspace website"
               >
                 <Code2 className="w-4 h-4 text-teal-300" />
                 <span className="hidden sm:inline">Embed Script</span>
               </button>
             )}
 
-            {/* New Client Button */}
+            {/* New Workspace Button */}
             <button
               onClick={onNewClient}
               className="flex items-center gap-1 px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold rounded-lg shadow-xs transition-colors"
-              title="Create a new client website front desk assistant"
+              title="Create a new website workspace assistant"
             >
               <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">New Client</span>
+              <span className="hidden sm:inline">New Workspace</span>
             </button>
 
             {/* Firebase Auth Account Button */}

@@ -245,8 +245,16 @@ export const FrontDeskWidget: React.FC<FrontDeskWidgetProps> = ({
   };
 
   // Custom theme colors style
+  const tpl = client.widgetTemplate || 'modern_soft';
+  const radiusClass = client.widgetRadius || 'rounded-2xl';
+
   const headerStyle = {
-    backgroundColor: client.primaryColor || '#0d9488',
+    backgroundColor:
+      tpl === 'dark_minimal'
+        ? '#0f172a'
+        : tpl === 'executive_clean'
+        ? '#1e293b'
+        : client.primaryColor || '#0d9488',
     color: '#ffffff'
   };
 
@@ -257,23 +265,51 @@ export const FrontDeskWidget: React.FC<FrontDeskWidgetProps> = ({
 
   // 1. Floating Bubble Button (if mode === 'floating' and !isOpen)
   if (mode === 'floating' && !isOpen) {
+    const launcher = client.launcherStyle || 'pill';
     return (
       <div
         className={`fixed bottom-3 ${
           client.widgetPosition === 'bottom-left' ? 'left-3' : 'right-3'
         } z-50 flex items-center justify-center`}
       >
-        <button
-          onClick={toggleOpen}
-          style={bubbleStyle}
-          className="w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 focus:outline-hidden group relative"
-          aria-label="Open AI Front Desk Assistant"
-        >
-          <MessageSquare className="w-6 h-6 text-white" />
-          {hasUnread && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white" />
-          )}
-        </button>
+        {launcher === 'pill' ? (
+          <button
+            onClick={toggleOpen}
+            style={bubbleStyle}
+            className="px-5 py-3.5 rounded-full shadow-2xl flex items-center gap-2.5 font-bold text-sm transition-all duration-300 hover:scale-105 focus:outline-hidden group relative border border-white/20"
+            aria-label="Open AI Front Desk Assistant"
+          >
+            <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
+              <MessageSquare className="w-3.5 h-3.5 text-white" />
+            </div>
+            <span>{client.widgetTitle || client.personaName}</span>
+            {hasUnread && (
+              <span className="w-2.5 h-2.5 bg-red-400 rounded-full animate-pulse border border-white" />
+            )}
+          </button>
+        ) : launcher === 'avatar' ? (
+          <button
+            onClick={toggleOpen}
+            style={bubbleStyle}
+            className="w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 focus:outline-hidden group relative border-2 border-white"
+            aria-label="Open AI Front Desk Assistant"
+          >
+            <Bot className="w-7 h-7 text-white" />
+            <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white" />
+          </button>
+        ) : (
+          <button
+            onClick={toggleOpen}
+            style={bubbleStyle}
+            className="w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 focus:outline-hidden group relative"
+            aria-label="Open AI Front Desk Assistant"
+          >
+            <MessageSquare className="w-6 h-6 text-white" />
+            {hasUnread && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white" />
+            )}
+          </button>
+        )}
       </div>
     );
   }
@@ -283,12 +319,17 @@ export const FrontDeskWidget: React.FC<FrontDeskWidgetProps> = ({
     <div
       className={`${
         mode === 'floating'
-          ? 'fixed inset-0 w-full h-full z-50 shadow-2xl rounded-2xl border border-slate-200'
-          : 'w-full h-full min-h-[580px] max-h-[700px] border border-slate-200 rounded-2xl shadow-md'
+          ? `fixed inset-0 w-full h-full z-50 shadow-2xl ${radiusClass} border border-slate-200`
+          : `w-full h-full min-h-[580px] max-h-[700px] border border-slate-200 ${radiusClass} shadow-md`
       } bg-white flex flex-col overflow-hidden transition-all duration-300`}
     >
       {/* Widget Header */}
-      <div style={headerStyle} className="px-4 py-3.5 flex items-center justify-between shrink-0">
+      <div
+        style={headerStyle}
+        className={`px-4 py-3.5 flex items-center justify-between shrink-0 ${
+          tpl === 'glass_morphism' ? 'backdrop-blur-md bg-opacity-90' : ''
+        }`}
+      >
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center font-bold text-white shadow-xs">
             <Bot className="w-5 h-5" />

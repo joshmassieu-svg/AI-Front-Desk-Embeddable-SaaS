@@ -20,7 +20,9 @@ import {
   IndustryType, 
   ServiceItem, 
   FaqItem, 
-  WidgetPosition 
+  WidgetPosition,
+  WidgetTemplateType,
+  LauncherStyleType
 } from '../../types';
 
 interface ClientEditorModalProps {
@@ -37,6 +39,18 @@ export const ClientEditorModal: React.FC<ClientEditorModalProps> = ({
   const isEditing = !!client;
 
   const [name, setName] = useState(client?.name || 'New Client Business');
+  const [workspaceName, setWorkspaceName] = useState(
+    client?.workspaceName || client?.name || 'New Website Workspace'
+  );
+  const [widgetTemplate, setWidgetTemplate] = useState<WidgetTemplateType>(
+    client?.widgetTemplate || 'modern_soft'
+  );
+  const [launcherStyle, setLauncherStyle] = useState<LauncherStyleType>(
+    client?.launcherStyle || 'pill'
+  );
+  const [widgetRadius, setWidgetRadius] = useState<'rounded-none' | 'rounded-lg' | 'rounded-2xl' | 'rounded-3xl'>(
+    client?.widgetRadius || 'rounded-2xl'
+  );
   const [industry, setIndustry] = useState<IndustryType>(client?.industry || 'healthcare_dental');
   const [websiteUrl, setWebsiteUrl] = useState(client?.websiteUrl || 'https://example-client.com');
   const [logoText, setLogoText] = useState(client?.logoText || 'Client Brand');
@@ -162,6 +176,10 @@ export const ClientEditorModal: React.FC<ClientEditorModalProps> = ({
       primaryColor,
       secondaryColor,
       widgetPosition,
+      workspaceName,
+      widgetTemplate,
+      launcherStyle,
+      widgetRadius,
       widgetTitle: 'Front Desk Assistant',
       personaName,
       personaRole,
@@ -298,9 +316,132 @@ export const ClientEditorModal: React.FC<ClientEditorModalProps> = ({
                 </div>
               </div>
             </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Website Workspace Name *
+              </label>
+              <input
+                type="text"
+                value={workspaceName}
+                onChange={(e) => setWorkspaceName(e.target.value)}
+                placeholder="e.g. Apex Dental Practice Workspace"
+                className="w-full text-sm bg-white border border-slate-300 rounded-lg px-3 py-2 font-medium"
+                required
+              />
+            </div>
           </div>
 
-          {/* Section 2: AI Front Desk Persona */}
+          {/* Section 2: Widget Appearance & Theme Template */}
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="font-bold text-sm text-slate-800 flex items-center gap-1.5">
+                <Palette className="w-4 h-4 text-indigo-600" />
+                2. Widget Appearance &amp; Theme Template (Custom per Website)
+              </h4>
+              <span className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+                Live Preview in Sandbox
+              </span>
+            </div>
+            <p className="text-xs text-slate-600">
+              Pick the aesthetic template and launcher button style that best matches this client website&apos;s brand.
+            </p>
+
+            {/* Template Card Presets */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              {[
+                {
+                  id: 'modern_soft' as WidgetTemplateType,
+                  title: 'Modern Soft',
+                  desc: 'Soft shadows, friendly welcoming cards',
+                  previewColor: 'bg-teal-500'
+                },
+                {
+                  id: 'executive_clean' as WidgetTemplateType,
+                  title: 'Executive Clean',
+                  desc: 'Crisp borders, minimal sleek header',
+                  previewColor: 'bg-slate-800'
+                },
+                {
+                  id: 'friendly_rounded' as WidgetTemplateType,
+                  title: 'Friendly Rounded',
+                  desc: 'Playful curves, vibrant greeting banner',
+                  previewColor: 'bg-emerald-500'
+                },
+                {
+                  id: 'dark_minimal' as WidgetTemplateType,
+                  title: 'Dark Minimalist',
+                  desc: 'Sleek dark header, high contrast slate',
+                  previewColor: 'bg-slate-900'
+                },
+                {
+                  id: 'glass_morphism' as WidgetTemplateType,
+                  title: 'Glass & Light',
+                  desc: 'Frosted acrylic header, translucent badge',
+                  previewColor: 'bg-indigo-600'
+                }
+              ].map((tpl) => {
+                const active = widgetTemplate === tpl.id;
+                return (
+                  <button
+                    key={tpl.id}
+                    type="button"
+                    onClick={() => setWidgetTemplate(tpl.id)}
+                    className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all ${
+                      active
+                        ? 'border-indigo-600 bg-indigo-50/60 ring-2 ring-indigo-500/20 shadow-xs'
+                        : 'border-slate-200 bg-white hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className={`w-3.5 h-3.5 rounded-full ${tpl.previewColor}`} />
+                        {active && (
+                          <span className="w-2 h-2 rounded-full bg-indigo-600" />
+                        )}
+                      </div>
+                      <p className="text-xs font-bold text-slate-900">{tpl.title}</p>
+                      <p className="text-[10px] text-slate-500 leading-tight">{tpl.desc}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Launcher Style & Corner Radius Controls */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-200/80">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Launcher Button Style
+                </label>
+                <select
+                  value={launcherStyle}
+                  onChange={(e) => setLauncherStyle(e.target.value as LauncherStyleType)}
+                  className="w-full text-sm bg-white border border-slate-300 rounded-lg px-3 py-2 font-medium"
+                >
+                  <option value="pill">Floating Pill Button (Title + Icon)</option>
+                  <option value="circle">Circle Icon Button</option>
+                  <option value="avatar">Assistant Avatar Circle Button</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Widget Border Radius
+                </label>
+                <select
+                  value={widgetRadius}
+                  onChange={(e) => setWidgetRadius(e.target.value as any)}
+                  className="w-full text-sm bg-white border border-slate-300 rounded-lg px-3 py-2 font-medium"
+                >
+                  <option value="rounded-lg">Sharp / Contemporary (8px)</option>
+                  <option value="rounded-2xl">Standard Smooth (16px)</option>
+                  <option value="rounded-3xl">Extra Rounded (24px)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: AI Front Desk Persona */}
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
             <h4 className="font-bold text-sm text-slate-800 flex items-center gap-1.5">
               <Bot className="w-4 h-4 text-indigo-600" />

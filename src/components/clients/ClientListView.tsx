@@ -45,13 +45,13 @@ export const ClientListView: React.FC<ClientListViewProps> = ({
         <div className="space-y-2 max-w-2xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 text-xs font-semibold border border-teal-500/30">
             <Sparkles className="w-3.5 h-3.5" />
-            AI Front Desk Embeddable SaaS • Multi-Tenant Engine
+            AI Front Desk Embeddable SaaS • Multi-Tenant Workspace Engine
           </div>
           <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight">
-            Manage Virtual Assistants Across Client Websites
+            Manage Virtual Assistants &amp; Website Workspaces
           </h1>
           <p className="text-slate-300 text-sm leading-relaxed">
-            Configure custom personas, upload business hours & FAQs, and generate copyable <code className="bg-white/10 px-1 rounded-sm">&lt;script&gt;</code> embed tags. Test each widget instantly in the interactive Website Simulator.
+            Configure custom personas, select widget appearance templates, upload FAQs, and generate copyable <code className="bg-white/10 px-1 rounded-sm">&lt;script&gt;</code> embed tags. Each client website operates as an isolated workspace.
           </p>
         </div>
 
@@ -61,7 +61,7 @@ export const ClientListView: React.FC<ClientListViewProps> = ({
             className="px-5 py-3 bg-teal-500 hover:bg-teal-400 text-slate-900 font-bold text-sm rounded-xl shadow-lg transition-colors flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
-            Add New Client Website
+            Add New Website Workspace
           </button>
         </div>
       </div>
@@ -71,7 +71,7 @@ export const ClientListView: React.FC<ClientListViewProps> = ({
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Building2 className="w-5 h-5 text-teal-600" />
-            <h2 className="text-xl font-bold text-slate-900">Active Client Websites ({clients.length})</h2>
+            <h2 className="text-xl font-bold text-slate-900">Active Website Workspaces ({clients.length})</h2>
           </div>
           <span className="text-xs text-slate-500 font-medium">
             Click &apos;Live Sandbox&apos; to test widget on client site
@@ -158,8 +158,11 @@ export const ClientListView: React.FC<ClientListViewProps> = ({
                     </span>
                   </div>
 
-                  {/* Services & FAQs badges */}
+                  {/* Services, Theme & FAQs badges */}
                   <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 capitalize">
+                      Theme: {(client.widgetTemplate || 'modern_soft').replace('_', ' ')}
+                    </span>
                     <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
                       {client.services.length} Bookable Services
                     </span>

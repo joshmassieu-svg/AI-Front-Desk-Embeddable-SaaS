@@ -38,9 +38,19 @@ export interface AppointmentSettings {
   confirmationMessage: string;
 }
 
+export type WidgetTemplateType = 
+  | 'modern_soft'
+  | 'executive_clean'
+  | 'friendly_rounded'
+  | 'dark_minimal'
+  | 'glass_morphism';
+
+export type LauncherStyleType = 'circle' | 'pill' | 'avatar';
+
 export interface ClientWebsite {
   id: string;
   name: string;
+  workspaceName?: string;
   industry: IndustryType;
   websiteUrl: string;
   logoText: string;
@@ -48,6 +58,9 @@ export interface ClientWebsite {
   primaryColor: string; // Hex color
   secondaryColor: string;
   widgetPosition: WidgetPosition;
+  widgetTemplate?: WidgetTemplateType;
+  launcherStyle?: LauncherStyleType;
+  widgetRadius?: 'rounded-none' | 'rounded-lg' | 'rounded-2xl' | 'rounded-3xl';
   widgetTitle: string;
   personaName: string;
   personaRole: string;
