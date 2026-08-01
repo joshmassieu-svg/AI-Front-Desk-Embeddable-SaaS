@@ -26,6 +26,7 @@ interface ClientListViewProps {
   onDeleteClient: (id: string) => void;
   onOpenEmbedModal: (client: ClientWebsite) => void;
   onLaunchSandbox: (client: ClientWebsite) => void;
+  onLaunchDashboard: (client: ClientWebsite) => void;
 }
 
 export const ClientListView: React.FC<ClientListViewProps> = ({
@@ -36,46 +37,30 @@ export const ClientListView: React.FC<ClientListViewProps> = ({
   onEditClient,
   onDeleteClient,
   onOpenEmbedModal,
-  onLaunchSandbox
+  onLaunchSandbox,
+  onLaunchDashboard
 }) => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* SaaS Status & Overview Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-teal-950 rounded-2xl p-6 sm:p-8 text-white shadow-xl border border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-        <div className="space-y-2 max-w-2xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 text-xs font-semibold border border-teal-500/30">
-            <Sparkles className="w-3.5 h-3.5" />
-            AI Front Desk Embeddable SaaS • Multi-Tenant Workspace Engine
-          </div>
-          <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight">
-            Manage Virtual Assistants &amp; Website Workspaces
-          </h1>
-          <p className="text-slate-300 text-sm leading-relaxed">
-            Configure custom personas, select widget appearance templates, upload FAQs, and generate copyable <code className="bg-white/10 px-1 rounded-sm">&lt;script&gt;</code> embed tags. Each client website operates as an isolated workspace.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3 shrink-0">
-          <button
-            onClick={onNewClient}
-            className="px-5 py-3 bg-teal-500 hover:bg-teal-400 text-slate-900 font-bold text-sm rounded-xl shadow-lg transition-colors flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Add New Website Workspace
-          </button>
-        </div>
-      </div>
-
-      {/* Client Websites Grid */}
+      {/* Client Websites Grid Header & Actions */}
       <div>
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-teal-600" />
-            <h2 className="text-xl font-bold text-slate-900">Active Website Workspaces ({clients.length})</h2>
+            <Building2 className="w-6 h-6 text-teal-600" />
+            <h1 className="text-2xl font-bold text-slate-900">Active Website Workspaces ({clients.length})</h1>
           </div>
-          <span className="text-xs text-slate-500 font-medium">
-            Click &apos;Live Sandbox&apos; to test widget on client site
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-slate-500 font-medium hidden sm:inline">
+              Click &apos;Live Sandbox&apos; to test widget on client site
+            </span>
+            <button
+              onClick={onNewClient}
+              className="px-5 py-2.5 bg-teal-600 hover:bg-teal-500 text-white font-bold text-sm rounded-xl shadow-sm transition-colors flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Add New Website Workspace
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -84,10 +69,14 @@ export const ClientListView: React.FC<ClientListViewProps> = ({
             return (
               <div
                 key={client.id}
-                className={`bg-white rounded-2xl border transition-all duration-200 overflow-hidden flex flex-col justify-between ${
+                onClick={() => {
+                  onSelectClient(client.id);
+                  onLaunchDashboard(client);
+                }}
+                className={`bg-white rounded-2xl border transition-all duration-200 overflow-hidden flex flex-col justify-between cursor-pointer group ${
                   isSelected
                     ? 'border-teal-500 ring-2 ring-teal-500/20 shadow-md'
-                    : 'border-slate-200 hover:border-slate-300 shadow-xs'
+                    : 'border-slate-200 hover:border-slate-300 hover:shadow-lg shadow-xs'
                 }`}
               >
                 {/* Card Top Brand & Persona Banner */}
@@ -95,24 +84,25 @@ export const ClientListView: React.FC<ClientListViewProps> = ({
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3.5">
                       <div
-                        className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-sm shrink-0"
+                        className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-sm shrink-0 group-hover:scale-105 transition-transform"
                         style={{ backgroundColor: client.primaryColor || '#0d9488' }}
                       >
                         <Bot className="w-6 h-6" />
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <h3 className="font-bold text-slate-900 text-lg leading-tight">{client.name}</h3>
-                          {isSelected && (
-                            <span className="text-[10px] font-bold bg-teal-100 text-teal-800 px-2 py-0.5 rounded-full border border-teal-200">
-                              Active
-                            </span>
-                          )}
+                          <h3 className="font-bold text-slate-900 text-lg leading-tight group-hover:text-teal-700 transition-colors">
+                            {client.workspaceName || client.name}
+                          </h3>
+                          <span className="text-[10px] font-bold bg-teal-50 text-teal-700 px-2 py-0.5 rounded-full border border-teal-200">
+                            Workspace
+                          </span>
                         </div>
                         <a
                           href={client.websiteUrl}
                           target="_blank"
                           rel="noreferrer"
+                          onClick={(e) => e.stopPropagation()}
                           className="text-xs text-slate-500 hover:text-teal-600 flex items-center gap-1 mt-0.5"
                         >
                           <Globe className="w-3.5 h-3.5" />
@@ -122,7 +112,7 @@ export const ClientListView: React.FC<ClientListViewProps> = ({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => onEditClient(client)}
                         className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-900 transition-colors"
@@ -177,25 +167,29 @@ export const ClientListView: React.FC<ClientListViewProps> = ({
                 </div>
 
                 {/* Card Footer Actions */}
-                <div className="bg-slate-50 px-6 py-3.5 border-t border-slate-200 flex items-center justify-between gap-2">
+                <div
+                  className="bg-slate-50 px-6 py-3.5 border-t border-slate-200 flex items-center justify-between gap-2"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <button
-                    onClick={() => onSelectClient(client.id)}
-                    className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${
-                      isSelected
-                        ? 'bg-teal-600 text-white'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
-                    }`}
+                    onClick={() => {
+                      onSelectClient(client.id);
+                      onLaunchDashboard(client);
+                    }}
+                    className="text-xs font-bold px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white shadow-xs transition-colors flex items-center gap-1.5"
                   >
-                    {isSelected ? '✓ Currently Selected' : 'Select Client'}
+                    <span>Enter Workspace Dashboard</span>
+                    <span className="text-teal-400 font-extrabold">→</span>
                   </button>
 
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => onOpenEmbedModal(client)}
-                      className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-lg shadow-xs flex items-center gap-1.5 transition-colors"
+                      className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-semibold text-xs rounded-lg shadow-2xs flex items-center gap-1.5 transition-colors"
+                      title="Copy embed script"
                     >
-                      <Code2 className="w-3.5 h-3.5 text-teal-300" />
-                      Embed Code
+                      <Code2 className="w-3.5 h-3.5 text-teal-600" />
+                      Embed Script
                     </button>
 
                     <button
@@ -203,10 +197,10 @@ export const ClientListView: React.FC<ClientListViewProps> = ({
                         onSelectClient(client.id);
                         onLaunchSandbox(client);
                       }}
-                      className="px-3.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-lg shadow-xs flex items-center gap-1.5 transition-colors"
+                      className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-lg shadow-xs flex items-center gap-1.5 transition-colors"
                     >
                       <Play className="w-3.5 h-3.5" />
-                      Live Sandbox
+                      Sandbox
                     </button>
                   </div>
                 </div>

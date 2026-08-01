@@ -22,6 +22,7 @@ import { EmbedCodeModal } from './components/embed/EmbedCodeModal';
 import { InboxView } from './components/inbox/InboxView';
 import { AnalyticsView } from './components/analytics/AnalyticsView';
 import { FrontDeskWidget } from './components/widget/FrontDeskWidget';
+import { WorkspaceDashboardView } from './components/workspace/WorkspaceDashboardView';
 import { AuthModal } from './components/auth/AuthModal';
 import { auth } from './lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
@@ -34,7 +35,7 @@ export default function App() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticsSummary>(INITIAL_ANALYTICS);
 
-  const [activeTab, setActiveTab] = useState<'clients' | 'sandbox' | 'inbox' | 'analytics'>('clients');
+  const [activeTab, setActiveTab] = useState<'clients' | 'dashboard' | 'sandbox' | 'inbox' | 'analytics'>('clients');
   const [selectedClientId, setSelectedClientId] = useState<string>(INITIAL_CLIENTS[0]?.id || 'cl_apex_dental');
 
   // Modals state
@@ -192,6 +193,29 @@ export default function App() {
               setSelectedClientId(client.id);
               setActiveTab('sandbox');
             }}
+            onLaunchDashboard={(client) => {
+              setSelectedClientId(client.id);
+              setActiveTab('dashboard');
+            }}
+          />
+        )}
+
+        {activeTab === 'dashboard' && currentClient && (
+          <WorkspaceDashboardView
+            client={currentClient}
+            allClients={clients}
+            leads={leads}
+            appointments={appointments}
+            conversations={conversations}
+            onSelectClient={setSelectedClientId}
+            onEditClient={(client) => setEditorModalClient(client)}
+            onOpenEmbedModal={(client) => setEmbedModalClient(client)}
+            onLaunchSandbox={() => setActiveTab('sandbox')}
+            onUpdateLeadStatus={handleUpdateLeadStatus}
+            onUpdateAppointmentStatus={handleUpdateAppointmentStatus}
+            onAppointmentBooked={handleNewAppointmentBooked}
+            onLeadCaptured={handleNewLeadCaptured}
+            onBackToWorkspaces={() => setActiveTab('clients')}
           />
         )}
 

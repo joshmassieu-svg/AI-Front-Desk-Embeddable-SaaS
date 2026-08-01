@@ -18,7 +18,7 @@ export const INITIAL_CLIENTS: ClientWebsite[] = [
     secondaryColor: '#0f766e',
     widgetPosition: 'bottom-right',
     widgetTemplate: 'modern_soft',
-    launcherStyle: 'pill',
+    launcherStyle: 'ask_ai_bar',
     widgetRadius: 'rounded-2xl',
     widgetTitle: 'Patient Concierge',
     personaName: 'Claire',

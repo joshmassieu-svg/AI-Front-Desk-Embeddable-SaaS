@@ -73,6 +73,7 @@ export const FrontDeskWidget: React.FC<FrontDeskWidgetProps> = ({
   const [isTyping, setIsTyping] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(client.enableSoundEffects ?? true);
   const [hasUnread, setHasUnread] = useState(true);
+  const [askAiBarInput, setAskAiBarInput] = useState('');
 
   // Booking Card state
   const [selectedService, setSelectedService] = useState<ServiceItem | null>(
@@ -122,6 +123,15 @@ export const FrontDeskWidget: React.FC<FrontDeskWidgetProps> = ({
       if (soundEnabled) {
         playSoftChime();
       }
+    }
+  };
+
+  const handleAskAiBarSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    toggleOpen();
+    if (askAiBarInput.trim()) {
+      handleSendMessage(askAiBarInput);
+      setAskAiBarInput('');
     }
   };
 
@@ -272,7 +282,40 @@ export const FrontDeskWidget: React.FC<FrontDeskWidgetProps> = ({
           client.widgetPosition === 'bottom-left' ? 'left-3' : 'right-3'
         } z-50 flex items-center justify-center`}
       >
-        {launcher === 'pill' ? (
+        {launcher === 'ask_ai_bar' ? (
+          <form
+            onSubmit={handleAskAiBarSubmit}
+            className="w-[280px] sm:w-[350px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/90 dark:border-slate-800 shadow-2xl rounded-2xl p-1.5 flex items-center gap-2 transition-all duration-300 hover:shadow-xl hover:border-teal-500/50 group"
+          >
+            <button
+              type="button"
+              onClick={toggleOpen}
+              style={{ backgroundColor: client.primaryColor || '#0d9488' }}
+              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:scale-105 relative"
+              aria-label="Open AI Assistant"
+            >
+              <Sparkles className="w-4 h-4 text-white animate-pulse" />
+              {hasUnread && (
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white" />
+              )}
+            </button>
+            <input
+              type="text"
+              value={askAiBarInput}
+              onChange={(e) => setAskAiBarInput(e.target.value)}
+              placeholder={`Ask AI about ${client.name || 'us'}...`}
+              className="w-full text-xs sm:text-sm bg-transparent border-none focus:outline-hidden text-slate-800 dark:text-slate-100 placeholder-slate-400 font-medium px-1.5"
+            />
+            <button
+              type="submit"
+              style={{ color: client.primaryColor || '#0d9488' }}
+              className="px-3 py-2 rounded-xl font-bold text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200 transition-colors flex items-center gap-1.5 shrink-0"
+            >
+              <span>Ask AI</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </form>
+        ) : launcher === 'pill' ? (
           <button
             onClick={toggleOpen}
             style={bubbleStyle}

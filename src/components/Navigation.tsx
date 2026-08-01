@@ -1,6 +1,7 @@
 import React from 'react';
 import { 
   Building2, 
+  LayoutDashboard,
   MonitorPlay, 
   Inbox, 
   BarChart3, 
@@ -17,8 +18,8 @@ import {
 import { ClientWebsite } from '../types';
 
 interface NavigationProps {
-  activeTab: 'clients' | 'sandbox' | 'inbox' | 'analytics';
-  onTabChange: (tab: 'clients' | 'sandbox' | 'inbox' | 'analytics') => void;
+  activeTab: 'clients' | 'dashboard' | 'sandbox' | 'inbox' | 'analytics';
+  onTabChange: (tab: 'clients' | 'dashboard' | 'sandbox' | 'inbox' | 'analytics') => void;
   clients: ClientWebsite[];
   selectedClientId: string;
   onSelectClient: (clientId: string) => void;
@@ -76,6 +77,24 @@ export const Navigation: React.FC<NavigationProps> = ({
             >
               <Building2 className="w-4 h-4 text-teal-600" />
               <span>Website Workspaces ({clients.length})</span>
+            </button>
+
+            <button
+              onClick={() => onTabChange('dashboard')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                activeTab === 'dashboard'
+                  ? 'bg-white text-slate-900 shadow-xs font-semibold'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+              }`}
+              title="Open currently selected website workspace dashboard"
+            >
+              <LayoutDashboard className="w-4 h-4 text-indigo-600" />
+              <span>Workspace Dashboard</span>
+              {currentClient && (
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                  {(currentClient.workspaceName || currentClient.name).split(' ')[0]}
+                </span>
+              )}
             </button>
 
             <button

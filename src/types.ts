@@ -45,7 +45,7 @@ export type WidgetTemplateType =
   | 'dark_minimal'
   | 'glass_morphism';
 
-export type LauncherStyleType = 'circle' | 'pill' | 'avatar';
+export type LauncherStyleType = 'circle' | 'pill' | 'avatar' | 'ask_ai_bar';
 
 export interface ClientWebsite {
   id: string;

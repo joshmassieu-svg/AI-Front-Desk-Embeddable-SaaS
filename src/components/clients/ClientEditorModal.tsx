@@ -420,6 +420,7 @@ export const ClientEditorModal: React.FC<ClientEditorModalProps> = ({
                   className="w-full text-sm bg-white border border-slate-300 rounded-lg px-3 py-2 font-medium"
                 >
                   <option value="pill">Floating Pill Button (Title + Icon)</option>
+                  <option value="ask_ai_bar">Ask AI Search Bar (Interactive Embed)</option>
                   <option value="circle">Circle Icon Button</option>
                   <option value="avatar">Assistant Avatar Circle Button</option>
                 </select>
