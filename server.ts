@@ -47,7 +47,9 @@ async function startServer() {
     const baseUrl = `${protocol}://${host}`;
 
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
 
     const scriptContent = `
 (function() {
@@ -644,6 +646,16 @@ Provide your response as the Front Desk Assistant (${clientConfig.personaName}):
         details: error.message
       });
     }
+  });
+
+  // Ensure embed requests never get cached by CDNs or browsers
+  app.use((req: Request, res: Response, next: any) => {
+    if (req.query.embed === 'true' || req.path.includes('/embed.js')) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+    next();
   });
 
   // Mount Vite middleware in development
