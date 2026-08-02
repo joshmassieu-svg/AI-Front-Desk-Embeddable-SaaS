@@ -181,10 +181,27 @@ export const FrontDeskWidget: React.FC<FrontDeskWidgetProps> = ({
       window.parent.postMessage({
         type: 'AIFRONTDESK_RESIZE',
         isOpen,
-        clientId: client.id
+        clientId: client.id,
+        launcherStyle: client.launcherStyle || 'pill',
+        primaryColor: client.primaryColor || '#0d9488',
+        widgetTitle: client.widgetTitle || client.personaName || 'AI Assistant',
+        customLauncherCode: client.customLauncherCode || ''
       }, '*');
     } catch (e) {}
-  }, [isOpen, client.id]);
+  }, [isOpen, client.id, client.launcherStyle, client.primaryColor, client.widgetTitle, client.personaName, client.customLauncherCode]);
+
+  useEffect(() => {
+    const handleMessage = (e: MessageEvent) => {
+      if (e.data && e.data.type === 'AIFRONTDESK_TOGGLE_OPEN') {
+        setIsOpen(!!e.data.isOpen);
+        if (e.data.isOpen) {
+          setHasUnread(false);
+        }
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
 
   const toggleOpen = () => {
     const next = !isOpen;

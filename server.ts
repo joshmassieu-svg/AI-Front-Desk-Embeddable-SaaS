@@ -54,77 +54,309 @@ async function startServer() {
   var CLIENT_ID = "${clientId}";
   var BASE_URL = "${baseUrl}";
   var POSITION = "${position}";
-  var EXISTING = document.getElementById("ai-frontdesk-container-" + CLIENT_ID);
+  var EXISTING = document.getElementById("ai-frontdesk-shadow-host-" + CLIENT_ID);
   if (EXISTING) return;
 
-  var container = document.createElement("div");
-  container.id = "ai-frontdesk-container-" + CLIENT_ID;
-  container.style.position = "fixed";
-  container.style.bottom = "16px";
-  if (POSITION === "bottom-left") {
-    container.style.left = "16px";
-    container.style.right = "auto";
-  } else if (POSITION === "bottom-center") {
-    container.style.left = "50%";
-    container.style.transform = "translateX(-50%)";
-    container.style.right = "auto";
-  } else {
-    container.style.right = "16px";
-    container.style.left = "auto";
-  }
-  container.style.zIndex = "999999";
-  container.style.fontFamily = "system-ui, -apple-system, sans-serif";
+  // 1. Create Shadow DOM Host container (isolated from host website CSS)
+  var host = document.createElement("div");
+  host.id = "ai-frontdesk-shadow-host-" + CLIENT_ID;
+  host.style.position = "fixed";
+  host.style.top = "0";
+  host.style.left = "0";
+  host.style.width = "0";
+  host.style.height = "0";
+  host.style.zIndex = "2147483647";
+  host.style.pointerEvents = "none";
+  document.body.appendChild(host);
 
-  // Create iframe for insulated widget rendering
-  var iframe = document.createElement("iframe");
-  iframe.src = BASE_URL + "/?embed=true&clientId=" + encodeURIComponent(CLIENT_ID);
-  iframe.style.border = "none";
-  iframe.style.background = "transparent";
-  iframe.style.width = "420px";
-  iframe.style.height = "110px";
-  iframe.style.maxHeight = "110px";
-  iframe.style.maxWidth = "calc(100vw - 32px)";
-  iframe.style.borderRadius = "0px";
-  iframe.style.boxShadow = "none";
-  iframe.style.transition = "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)";
-  iframe.style.colorScheme = "normal";
-  iframe.allow = "microphone; clipboard-write";
+  var shadow = host.attachShadow({ mode: "open" });
 
-  window.addEventListener("message", function(e) {
-    var data = e.data;
-    if (data && data.type === "AIFRONTDESK_RESIZE") {
-      var isMobile = window.innerWidth < 480;
-      if (data.isOpen) {
-        iframe.style.width = isMobile ? "calc(100vw - 32px)" : "400px";
-        iframe.style.height = isMobile ? "calc(100vh - 80px)" : "640px";
-        iframe.style.maxHeight = "90vh";
-        iframe.style.boxShadow = "0 10px 30px rgba(0,0,0,0.18)";
-        iframe.style.borderRadius = "16px";
-        container.style.bottom = isMobile ? "16px" : "24px";
-      } else {
-        var style = data.launcherStyle || "pill";
-        var closedWidth = "420px";
-        var closedHeight = "110px";
-        if (style === "circle") {
-          closedWidth = "90px";
-          closedHeight = "90px";
-        } else if (style === "pill" || style === "avatar") {
-          closedWidth = "280px";
-          closedHeight = "95px";
-        }
-        iframe.style.width = closedWidth;
-        iframe.style.height = closedHeight;
-        iframe.style.maxHeight = closedHeight;
-        iframe.style.boxShadow = "none";
-        iframe.style.background = "transparent";
-        iframe.style.borderRadius = "0px";
-        container.style.bottom = "16px";
+  // 2. Insulated CSS inside Shadow DOM (no leakage in or out)
+  var style = document.createElement("style");
+  style.textContent = \`
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; }
+    
+    .afd-launcher-wrapper {
+      pointer-events: auto;
+      position: fixed;
+      bottom: 20px;
+      z-index: 2147483647;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      cursor: pointer;
+    }
+    .afd-pos-bottom-right { right: 20px; left: auto; }
+    .afd-pos-bottom-left { left: 20px; right: auto; }
+    .afd-pos-bottom-center { left: 50%; transform: translateX(-50%); right: auto; }
+    
+    /* Pill Button Style */
+    .afd-btn-pill {
+      background: #0d9488;
+      color: #ffffff;
+      padding: 14px 22px;
+      border-radius: 9999px;
+      font-weight: 700;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.22);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .afd-btn-pill:hover {
+      transform: scale(1.05);
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.28);
+    }
+    .afd-icon-circle {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Ask AI Bar Style */
+    .afd-btn-ask-ai-bar {
+      background: #0f172a;
+      color: #ffffff;
+      padding: 6px 6px 6px 16px;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      width: 320px;
+      max-width: calc(100vw - 40px);
+      transition: transform 0.2s ease;
+    }
+    .afd-btn-ask-ai-bar:hover {
+      transform: scale(1.02);
+    }
+    .afd-ai-badge {
+      font-size: 10px;
+      font-weight: 800;
+      color: #5eead4;
+      background: rgba(20, 184, 166, 0.2);
+      padding: 3px 8px;
+      border-radius: 12px;
+      letter-spacing: 0.5px;
+    }
+    .afd-ask-btn {
+      background: #0d9488;
+      color: #fff;
+      padding: 8px 14px;
+      border-radius: 14px;
+      font-weight: 700;
+      font-size: 12px;
+      margin-left: auto;
+      white-space: nowrap;
+    }
+
+    /* Circle / Avatar Button Style */
+    .afd-btn-circle {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: #0d9488;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      transition: transform 0.2s ease;
+    }
+    .afd-btn-circle:hover { transform: scale(1.08); }
+
+    /* Popup Modal Window */
+    .afd-popup-modal {
+      display: none;
+      opacity: 0;
+      pointer-events: auto;
+      position: fixed;
+      bottom: 20px;
+      width: 400px;
+      height: 640px;
+      max-height: 88vh;
+      max-width: calc(100vw - 32px);
+      z-index: 2147483647;
+      background: #0f172a;
+      border-radius: 20px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.45);
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      transform: translateY(16px);
+      flex-direction: column;
+    }
+    .afd-popup-modal.open {
+      display: flex;
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .afd-pos-bottom-right.afd-popup-modal { right: 20px; left: auto; }
+    .afd-pos-bottom-left.afd-popup-modal { left: 20px; right: auto; }
+    .afd-pos-bottom-center.afd-popup-modal { left: 50%; transform: translateX(-50%); right: auto; }
+    .afd-pos-bottom-center.afd-popup-modal.open { transform: translateX(-50%) translateY(0); }
+
+    /* Modal Close Header (Optional fallthrough close) */
+    .afd-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      background: #1e293b;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      color: #f8fafc;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .afd-modal-close {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 4px;
+    }
+    .afd-modal-close:hover { color: #fff; }
+
+    .afd-iframe {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: transparent;
+    }
+
+    @media (max-width: 480px) {
+      .afd-popup-modal.open {
+        width: calc(100vw - 32px);
+        height: calc(100vh - 80px);
+        bottom: 16px;
+        right: 16px;
+        border-radius: 16px;
       }
+    }
+  \`;
+  shadow.appendChild(style);
+
+  // 3. Render Launcher Button inside Shadow DOM
+  var launcher = document.createElement("div");
+  launcher.className = "afd-launcher-wrapper afd-pos-" + POSITION;
+  launcher.innerHTML = \`
+    <div class="afd-btn-pill" id="afd-launcher-btn">
+      <div class="afd-icon-circle">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+      </div>
+      <span id="afd-launcher-title">AI Assistant</span>
+    </div>
+  \`;
+  shadow.appendChild(launcher);
+
+  // 4. Render Popup Modal Dialog inside Shadow DOM
+  var modal = document.createElement("div");
+  modal.className = "afd-popup-modal afd-pos-" + POSITION;
+  modal.innerHTML = \`
+    <iframe class="afd-iframe" src="\` + BASE_URL + \`/?embed=true&clientId=\` + encodeURIComponent(CLIENT_ID) + \`" allow="microphone; clipboard-write"></iframe>
+  \`;
+  shadow.appendChild(modal);
+
+  var iframe = modal.querySelector("iframe");
+  var launcherBtn = launcher.querySelector("#afd-launcher-btn");
+
+  // Helper to dynamically update Launcher appearance based on client settings
+  function updateLauncher(styleType, title, primaryColor, customCode) {
+    if (primaryColor) {
+      launcherBtn.style.background = primaryColor;
+    }
+    if (title && launcher.querySelector("#afd-launcher-title")) {
+      launcher.querySelector("#afd-launcher-title").textContent = title;
+    }
+    if (styleType === "ask_ai_bar") {
+      launcher.innerHTML = \`
+        <div class="afd-btn-ask-ai-bar" id="afd-launcher-btn">
+          <span style="color: #94a3b8;">Ask AI about \` + (title || "us") + \`...</span>
+          <span class="afd-ai-badge">AI READY</span>
+          <div class="afd-ask-btn" style="background: \` + (primaryColor || "#0d9488") + \`">Ask AI</div>
+        </div>
+      \`;
+      launcherBtn = launcher.querySelector("#afd-launcher-btn");
+      bindLauncherClick();
+    } else if (styleType === "circle" || styleType === "avatar") {
+      launcher.innerHTML = \`
+        <div class="afd-btn-circle" id="afd-launcher-btn" style="background: \` + (primaryColor || "#0d9488") + \`">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          </svg>
+        </div>
+      \`;
+      launcherBtn = launcher.querySelector("#afd-launcher-btn");
+      bindLauncherClick();
+    } else if (styleType === "custom_code" && customCode) {
+      launcher.innerHTML = customCode;
+      launcherBtn = launcher.firstElementChild || launcher;
+      bindLauncherClick();
+    }
+  }
+
+  function toggleModal(open) {
+    if (open) {
+      modal.classList.add("open");
+      launcher.style.display = "none";
+      if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.postMessage({ type: "AIFRONTDESK_TOGGLE_OPEN", isOpen: true }, "*");
+      }
+    } else {
+      modal.classList.remove("open");
+      launcher.style.display = "block";
+      if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.postMessage({ type: "AIFRONTDESK_TOGGLE_OPEN", isOpen: false }, "*");
+      }
+    }
+  }
+
+  function bindLauncherClick() {
+    if (launcherBtn) {
+      launcherBtn.addEventListener("click", function() {
+        toggleModal(true);
+      });
+    }
+  }
+  bindLauncherClick();
+
+  // 5. Global Document Listener for any client trigger (data-ai-frontdesk-open="true")
+  document.addEventListener("click", function(e) {
+    var trigger = e.target.closest('[data-ai-frontdesk-open="true"], .open-ai-frontdesk');
+    if (trigger) {
+      e.preventDefault();
+      toggleModal(true);
     }
   });
 
-  container.appendChild(iframe);
-  document.body.appendChild(container);
+  // 6. Listen for Widget Messages (resize, close, style sync)
+  window.addEventListener("message", function(e) {
+    var data = e.data;
+    if (data && data.type === "AIFRONTDESK_RESIZE") {
+      if (data.launcherStyle || data.widgetTitle || data.primaryColor || data.customLauncherCode) {
+        updateLauncher(data.launcherStyle, data.widgetTitle, data.primaryColor, data.customLauncherCode);
+      }
+      if (data.isOpen) {
+        modal.classList.add("open");
+        launcher.style.display = "none";
+      } else {
+        modal.classList.remove("open");
+        launcher.style.display = "block";
+      }
+    }
+  });
 })();
 `;
     res.send(scriptContent);

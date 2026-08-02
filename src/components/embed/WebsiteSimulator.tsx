@@ -378,7 +378,7 @@ export const WebsiteSimulator: React.FC<WebsiteSimulatorProps> = ({
               mode="floating"
               onAppointmentBooked={onAppointmentBooked}
               onLeadCaptured={onLeadCaptured}
-              defaultOpen={true}
+              defaultOpen={false}
             />
           )}
         </div>

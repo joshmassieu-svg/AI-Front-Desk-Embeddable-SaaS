@@ -497,7 +497,7 @@ export const ApiService = {
       iframeStyle = "position:fixed; bottom:16px; left:50%; transform:translateX(-50%); width:420px; max-width:calc(100vw - 32px); height:110px; max-height:110px; border:none; z-index:999999; background:transparent; border-radius:0px; box-shadow:none; transition:all 0.3s cubic-bezier(0.16,1,0.3,1); color-scheme:normal;";
     }
 
-    const scriptTag = `<!-- AI Front Desk Embed Script -->
+    const scriptTag = `<!-- AI Front Desk Shadow DOM Popup Embed -->
 <script 
   src="${baseUrl}/api/embed.js?client=${clientId}&position=${position}" 
   data-client-id="${clientId}" 
@@ -505,34 +505,15 @@ export const ApiService = {
   async>
 </script>`;
 
-    const iframeSnippet = `<!-- AI Front Desk Iframe Embed -->
-<iframe 
-  id="ai-frontdesk-iframe-${clientId}"
-  src="${baseUrl}/?embed=true&clientId=${clientId}" 
-  style="${iframeStyle}" 
-  allow="microphone">
-</iframe>
+    const iframeSnippet = `<!-- AI Front Desk Popup Modal Embed (HTML / JS) -->
+<div id="ai-frontdesk-popup-root-${clientId}"></div>
 <script>
-  window.addEventListener('message', function(e) {
-    var iframe = document.getElementById('ai-frontdesk-iframe-${clientId}');
-    if (iframe && e.data && e.data.type === 'AIFRONTDESK_RESIZE') {
-      var isMobile = window.innerWidth < 480;
-      if (e.data.isOpen) {
-        iframe.style.width = isMobile ? 'calc(100vw - 32px)' : '400px';
-        iframe.style.height = isMobile ? 'calc(100vh - 80px)' : '640px';
-        iframe.style.maxHeight = '90vh';
-        iframe.style.boxShadow = '0 10px 30px rgba(0,0,0,0.18)';
-        iframe.style.borderRadius = '16px';
-      } else {
-        iframe.style.width = '420px';
-        iframe.style.height = '110px';
-        iframe.style.maxHeight = '110px';
-        iframe.style.boxShadow = 'none';
-        iframe.style.background = 'transparent';
-        iframe.style.borderRadius = '0px';
-      }
-    }
-  });
+  (function() {
+    var s = document.createElement("script");
+    s.src = "${baseUrl}/api/embed.js?client=${clientId}&position=${position}";
+    s.async = true;
+    document.head.appendChild(s);
+  })();
 </script>`;
 
     const reactSnippet = `// React / Next.js Component Embed
