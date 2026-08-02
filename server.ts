@@ -41,6 +41,7 @@ async function startServer() {
   // API Route: Dynamic embed.js script generator for Client Websites
   app.get(['/api/embed.js', '/embed.js'], (req: Request, res: Response) => {
     const clientId = (req.query.client as string) || 'cl_apex_dental';
+    const position = (req.query.position as string) || 'bottom-right';
     const host = req.headers.host || 'localhost:3000';
     const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
     const baseUrl = `${protocol}://${host}`;
@@ -52,6 +53,7 @@ async function startServer() {
 (function() {
   var CLIENT_ID = "${clientId}";
   var BASE_URL = "${baseUrl}";
+  var POSITION = "${position}";
   var EXISTING = document.getElementById("ai-frontdesk-container-" + CLIENT_ID);
   if (EXISTING) return;
 
@@ -59,7 +61,17 @@ async function startServer() {
   container.id = "ai-frontdesk-container-" + CLIENT_ID;
   container.style.position = "fixed";
   container.style.bottom = "16px";
-  container.style.right = "16px";
+  if (POSITION === "bottom-left") {
+    container.style.left = "16px";
+    container.style.right = "auto";
+  } else if (POSITION === "bottom-center") {
+    container.style.left = "50%";
+    container.style.transform = "translateX(-50%)";
+    container.style.right = "auto";
+  } else {
+    container.style.right = "16px";
+    container.style.left = "auto";
+  }
   container.style.zIndex = "999999";
   container.style.fontFamily = "system-ui, -apple-system, sans-serif";
 
@@ -68,10 +80,10 @@ async function startServer() {
   iframe.src = BASE_URL + "/?embed=true&clientId=" + encodeURIComponent(CLIENT_ID);
   iframe.style.border = "none";
   iframe.style.background = "transparent";
-  iframe.style.width = "90px";
-  iframe.style.height = "90px";
-  iframe.style.maxHeight = "90vh";
-  iframe.style.maxWidth = "95vw";
+  iframe.style.width = "420px";
+  iframe.style.height = "110px";
+  iframe.style.maxHeight = "110px";
+  iframe.style.maxWidth = "calc(100vw - 32px)";
   iframe.style.borderRadius = "0px";
   iframe.style.boxShadow = "none";
   iframe.style.transition = "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)";
@@ -85,13 +97,28 @@ async function startServer() {
       if (data.isOpen) {
         iframe.style.width = isMobile ? "calc(100vw - 32px)" : "400px";
         iframe.style.height = isMobile ? "calc(100vh - 80px)" : "640px";
+        iframe.style.maxHeight = "90vh";
+        iframe.style.boxShadow = "0 10px 30px rgba(0,0,0,0.18)";
+        iframe.style.borderRadius = "16px";
         container.style.bottom = isMobile ? "16px" : "24px";
-        container.style.right = isMobile ? "16px" : "24px";
       } else {
-        iframe.style.width = "90px";
-        iframe.style.height = "90px";
+        var style = data.launcherStyle || "pill";
+        var closedWidth = "420px";
+        var closedHeight = "110px";
+        if (style === "circle") {
+          closedWidth = "90px";
+          closedHeight = "90px";
+        } else if (style === "pill" || style === "avatar") {
+          closedWidth = "280px";
+          closedHeight = "95px";
+        }
+        iframe.style.width = closedWidth;
+        iframe.style.height = closedHeight;
+        iframe.style.maxHeight = closedHeight;
+        iframe.style.boxShadow = "none";
+        iframe.style.background = "transparent";
+        iframe.style.borderRadius = "0px";
         container.style.bottom = "16px";
-        container.style.right = "16px";
       }
     }
   });

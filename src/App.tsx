@@ -150,7 +150,7 @@ export default function App() {
         <FrontDeskWidget
           client={targetClient}
           mode="floating"
-          defaultOpen={true}
+          defaultOpen={false}
           onAppointmentBooked={handleNewAppointmentBooked}
           onLeadCaptured={handleNewLeadCaptured}
         />

@@ -490,16 +490,16 @@ export const ApiService = {
     wordpressShortcode: string;
   } {
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://aifrontdesk.ai';
-    let iframeStyle = "position:fixed; bottom:20px; right:20px; width:380px; height:600px; border:none; z-index:999999; border-radius:16px; box-shadow: 0 10px 30px rgba(0,0,0,0.18);";
+    let iframeStyle = "position:fixed; bottom:16px; right:16px; width:420px; max-width:calc(100vw - 32px); height:110px; max-height:110px; border:none; z-index:999999; background:transparent; border-radius:0px; box-shadow:none; transition:all 0.3s cubic-bezier(0.16,1,0.3,1); color-scheme:normal;";
     if (position === 'bottom-left') {
-      iframeStyle = "position:fixed; bottom:20px; left:20px; width:380px; height:600px; border:none; z-index:999999; border-radius:16px; box-shadow: 0 10px 30px rgba(0,0,0,0.18);";
+      iframeStyle = "position:fixed; bottom:16px; left:16px; width:420px; max-width:calc(100vw - 32px); height:110px; max-height:110px; border:none; z-index:999999; background:transparent; border-radius:0px; box-shadow:none; transition:all 0.3s cubic-bezier(0.16,1,0.3,1); color-scheme:normal;";
     } else if (position === 'bottom-center') {
-      iframeStyle = "position:fixed; bottom:20px; left:50%; transform:translateX(-50%); width:380px; height:600px; border:none; z-index:999999; border-radius:16px; box-shadow: 0 10px 30px rgba(0,0,0,0.18);";
+      iframeStyle = "position:fixed; bottom:16px; left:50%; transform:translateX(-50%); width:420px; max-width:calc(100vw - 32px); height:110px; max-height:110px; border:none; z-index:999999; background:transparent; border-radius:0px; box-shadow:none; transition:all 0.3s cubic-bezier(0.16,1,0.3,1); color-scheme:normal;";
     }
 
     const scriptTag = `<!-- AI Front Desk Embed Script -->
 <script 
-  src="${baseUrl}/api/embed.js?client=${clientId}" 
+  src="${baseUrl}/api/embed.js?client=${clientId}&position=${position}" 
   data-client-id="${clientId}" 
   data-position="${position}" 
   async>
@@ -507,10 +507,33 @@ export const ApiService = {
 
     const iframeSnippet = `<!-- AI Front Desk Iframe Embed -->
 <iframe 
+  id="ai-frontdesk-iframe-${clientId}"
   src="${baseUrl}/?embed=true&clientId=${clientId}" 
   style="${iframeStyle}" 
   allow="microphone">
-</iframe>`;
+</iframe>
+<script>
+  window.addEventListener('message', function(e) {
+    var iframe = document.getElementById('ai-frontdesk-iframe-${clientId}');
+    if (iframe && e.data && e.data.type === 'AIFRONTDESK_RESIZE') {
+      var isMobile = window.innerWidth < 480;
+      if (e.data.isOpen) {
+        iframe.style.width = isMobile ? 'calc(100vw - 32px)' : '400px';
+        iframe.style.height = isMobile ? 'calc(100vh - 80px)' : '640px';
+        iframe.style.maxHeight = '90vh';
+        iframe.style.boxShadow = '0 10px 30px rgba(0,0,0,0.18)';
+        iframe.style.borderRadius = '16px';
+      } else {
+        iframe.style.width = '420px';
+        iframe.style.height = '110px';
+        iframe.style.maxHeight = '110px';
+        iframe.style.boxShadow = 'none';
+        iframe.style.background = 'transparent';
+        iframe.style.borderRadius = '0px';
+      }
+    }
+  });
+</script>`;
 
     const reactSnippet = `// React / Next.js Component Embed
 import { useEffect } from 'react';
@@ -518,7 +541,7 @@ import { useEffect } from 'react';
 export function AiFrontDeskWidget({ clientId = "${clientId}", position = "${position}" }) {
   useEffect(() => {
     const script = document.createElement("script");
-    script.src = "${baseUrl}/api/embed.js?client=" + clientId;
+    script.src = "${baseUrl}/api/embed.js?client=" + clientId + "&position=" + position;
     script.setAttribute("data-position", position);
     script.async = true;
     document.body.appendChild(script);
