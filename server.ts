@@ -175,7 +175,7 @@ async function startServer() {
     }
     .afd-btn-circle:hover { transform: scale(1.08); }
 
-    /* Popup Modal Window */
+    /* 100% Native Popup Modal Window (Zero Iframes) */
     .afd-popup-modal {
       display: none;
       opacity: 0;
@@ -183,8 +183,8 @@ async function startServer() {
       position: fixed;
       bottom: 20px;
       width: 400px;
-      height: 640px;
-      max-height: 88vh;
+      height: 600px;
+      max-height: 85vh;
       max-width: calc(100vw - 32px);
       z-index: 2147483647;
       background: #0f172a;
@@ -206,34 +206,140 @@ async function startServer() {
     .afd-pos-bottom-center.afd-popup-modal { left: 50%; transform: translateX(-50%); right: auto; }
     .afd-pos-bottom-center.afd-popup-modal.open { transform: translateX(-50%) translateY(0); }
 
-    /* Modal Close Header (Optional fallthrough close) */
     .afd-modal-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 10px 16px;
+      padding: 14px 16px;
       background: #1e293b;
       border-bottom: 1px solid rgba(255,255,255,0.08);
       color: #f8fafc;
-      font-size: 13px;
-      font-weight: 600;
+      flex-shrink: 0;
+    }
+    .afd-header-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .afd-status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+    }
+    .afd-header-title {
+      font-weight: 700;
+      font-size: 14px;
+      color: #f8fafc;
+    }
+    .afd-header-sub {
+      font-size: 11px;
+      color: #94a3b8;
     }
     .afd-modal-close {
       background: transparent;
       border: none;
       color: #94a3b8;
       cursor: pointer;
-      font-size: 16px;
+      font-size: 18px;
       padding: 4px;
+      line-height: 1;
     }
     .afd-modal-close:hover { color: #fff; }
 
-    .afd-iframe {
+    .afd-chat-body {
       flex: 1;
-      width: 100%;
-      height: 100%;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: #0f172a;
+    }
+    .afd-bubble-ai {
+      background: #1e293b;
+      color: #f8fafc;
+      padding: 12px 14px;
+      border-radius: 16px 16px 16px 4px;
+      font-size: 14px;
+      line-height: 1.5;
+      max-width: 85%;
+      align-self: flex-start;
+      border: 1px solid rgba(255,255,255,0.08);
+      word-break: break-word;
+    }
+    .afd-bubble-user {
+      background: #0d9488;
+      color: #ffffff;
+      padding: 12px 14px;
+      border-radius: 16px 16px 4px 16px;
+      font-size: 14px;
+      line-height: 1.5;
+      max-width: 85%;
+      align-self: flex-end;
+      word-break: break-word;
+    }
+    .afd-quick-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      padding: 0 16px 10px 16px;
+      flex-shrink: 0;
+    }
+    .afd-quick-pill {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #cbd5e1;
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .afd-quick-pill:hover {
+      background: #0d9488;
+      color: #ffffff;
+      border-color: #0d9488;
+    }
+    .afd-input-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: #1e293b;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      flex-shrink: 0;
+    }
+    .afd-input-field {
+      flex: 1;
+      background: #0f172a;
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #f8fafc;
+      padding: 10px 14px;
+      border-radius: 9999px;
+      font-size: 14px;
+      outline: none;
+    }
+    .afd-input-field:focus {
+      border-color: #0d9488;
+    }
+    .afd-send-btn {
+      background: #0d9488;
+      color: #ffffff;
       border: none;
-      background: transparent;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.15s ease;
+      flex-shrink: 0;
+    }
+    .afd-send-btn:hover {
+      transform: scale(1.06);
     }
 
     @media (max-width: 480px) {
@@ -263,16 +369,135 @@ async function startServer() {
   \`;
   shadow.appendChild(launcher);
 
-  // 4. Render Popup Modal Dialog inside Shadow DOM
+  // 4. Render 100% Native Popup Modal Dialog inside Shadow DOM (ZERO IFRAMES)
   var modal = document.createElement("div");
   modal.className = "afd-popup-modal afd-pos-" + POSITION;
   modal.innerHTML = \`
-    <iframe class="afd-iframe" src="\` + BASE_URL + \`/?embed=true&clientId=\` + encodeURIComponent(CLIENT_ID) + \`" allow="microphone; clipboard-write"></iframe>
+    <div class="afd-modal-header">
+      <div class="afd-header-info">
+        <div class="afd-status-dot"></div>
+        <div>
+          <div class="afd-header-title" id="afd-title">AI Assistant</div>
+          <div class="afd-header-sub">Online • Instant Answers</div>
+        </div>
+      </div>
+      <button class="afd-modal-close" id="afd-close-btn" aria-label="Close">✕</button>
+    </div>
+    <div class="afd-chat-body" id="afd-chat-body"></div>
+    <div class="afd-quick-actions" id="afd-quick-actions"></div>
+    <form class="afd-input-bar" id="afd-input-form">
+      <input type="text" class="afd-input-field" id="afd-input-field" placeholder="Ask a question or book..." autocomplete="off" />
+      <button type="submit" class="afd-send-btn" aria-label="Send">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+      </button>
+    </form>
   \`;
   shadow.appendChild(modal);
 
-  var iframe = modal.querySelector("iframe");
+  var chatBody = modal.querySelector("#afd-chat-body");
+  var quickActions = modal.querySelector("#afd-quick-actions");
+  var inputForm = modal.querySelector("#afd-input-form");
+  var inputField = modal.querySelector("#afd-input-field");
+  var closeBtn = modal.querySelector("#afd-close-btn");
   var launcherBtn = launcher.querySelector("#afd-launcher-btn");
+
+  var chatHistory = [];
+  var isTyping = false;
+  var clientConfig = null;
+
+  function appendMessage(sender, text) {
+    var bubble = document.createElement("div");
+    bubble.className = sender === "user" ? "afd-bubble-user" : "afd-bubble-ai";
+    bubble.textContent = text;
+    chatBody.appendChild(bubble);
+    chatBody.scrollTop = chatBody.scrollHeight;
+    return bubble;
+  }
+
+  function renderQuickPills(pills) {
+    quickActions.innerHTML = "";
+    pills.forEach(function(label) {
+      var pill = document.createElement("button");
+      pill.type = "button";
+      pill.className = "afd-quick-pill";
+      pill.textContent = label;
+      pill.addEventListener("click", function() {
+        sendMessage(label);
+      });
+      quickActions.appendChild(pill);
+    });
+  }
+
+  function fetchClientConfig() {
+    fetch(BASE_URL + "/api/client-config?clientId=" + encodeURIComponent(CLIENT_ID))
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data && data.success && data.config) {
+          clientConfig = data.config;
+          if (clientConfig.name || clientConfig.personaName) {
+            modal.querySelector("#afd-title").textContent = clientConfig.personaName || "AI Assistant";
+            var launcherTitle = launcher.querySelector("#afd-launcher-title");
+            if (launcherTitle) launcherTitle.textContent = clientConfig.personaName || "AI Assistant";
+          }
+          if (clientConfig.primaryColor) {
+            if (launcherBtn) launcherBtn.style.background = clientConfig.primaryColor;
+          }
+          chatBody.innerHTML = "";
+          appendMessage("assistant", clientConfig.welcomeMessage || "Hello! How can I help you learn about our services or schedule an appointment today?");
+          renderQuickPills(["📅 Book Appointment", "💼 Services & Pricing", "📞 Request Callback"]);
+        }
+      })
+      .catch(function(err) {
+        if (chatBody.children.length === 0) {
+          appendMessage("assistant", "Hello! How can I help you learn about our services or schedule an appointment today?");
+          renderQuickPills(["📅 Book Appointment", "💼 Services & Pricing", "📞 Request Callback"]);
+        }
+      });
+  }
+
+  function sendMessage(text) {
+    if (!text || !text.trim() || isTyping) return;
+    var trimmed = text.trim();
+    appendMessage("user", trimmed);
+    inputField.value = "";
+    isTyping = true;
+
+    var typingBubble = document.createElement("div");
+    typingBubble.className = "afd-bubble-ai";
+    typingBubble.style.fontStyle = "italic";
+    typingBubble.style.opacity = "0.7";
+    typingBubble.textContent = "AI is typing...";
+    chatBody.appendChild(typingBubble);
+    chatBody.scrollTop = chatBody.scrollHeight;
+
+    fetch(BASE_URL + "/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clientId: CLIENT_ID,
+        userMessage: trimmed,
+        history: chatHistory,
+        clientConfig: clientConfig
+      })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (typingBubble && typingBubble.parentNode) typingBubble.parentNode.removeChild(typingBubble);
+      isTyping = false;
+      var replyText = data && data.message && data.message.text ? data.message.text : "I would be happy to help you! How else can I assist today?";
+      appendMessage("assistant", replyText);
+      chatHistory.push({ sender: "user", text: trimmed });
+      chatHistory.push({ sender: "assistant", text: replyText });
+    })
+    .catch(function(e) {
+      if (typingBubble && typingBubble.parentNode) typingBubble.parentNode.removeChild(typingBubble);
+      isTyping = false;
+      appendMessage("assistant", "I am here and ready to help! Could you please repeat your question?");
+    });
+  }
 
   // Helper to dynamically update Launcher appearance based on client settings
   function updateLauncher(styleType, title, primaryColor, customCode) {
@@ -313,15 +538,11 @@ async function startServer() {
     if (open) {
       modal.classList.add("open");
       launcher.style.display = "none";
-      if (iframe && iframe.contentWindow) {
-        iframe.contentWindow.postMessage({ type: "AIFRONTDESK_TOGGLE_OPEN", isOpen: true }, "*");
-      }
+      if (!clientConfig) fetchClientConfig();
+      setTimeout(function() { inputField.focus(); }, 100);
     } else {
       modal.classList.remove("open");
       launcher.style.display = "block";
-      if (iframe && iframe.contentWindow) {
-        iframe.contentWindow.postMessage({ type: "AIFRONTDESK_TOGGLE_OPEN", isOpen: false }, "*");
-      }
     }
   }
 
@@ -334,7 +555,7 @@ async function startServer() {
   }
   bindLauncherClick();
 
-  // 5. Global Document Listener for any client trigger (data-ai-frontdesk-open="true")
+  // Global Document Listener for any client trigger (data-ai-frontdesk-open="true")
   document.addEventListener("click", function(e) {
     var trigger = e.target.closest('[data-ai-frontdesk-open="true"], .open-ai-frontdesk');
     if (trigger) {
@@ -343,7 +564,7 @@ async function startServer() {
     }
   });
 
-  // 6. Listen for Widget Messages (resize, close, style sync)
+  // Listen for Widget Messages (resize, close, style sync)
   window.addEventListener("message", function(e) {
     var data = e.data;
     if (data && data.type === "AIFRONTDESK_RESIZE") {
@@ -359,6 +580,9 @@ async function startServer() {
       }
     }
   });
+
+  // Load client config right away for launcher button style and welcome message
+  fetchClientConfig();
 })();
 `;
     res.send(scriptContent);
@@ -533,12 +757,115 @@ Respond ONLY with valid JSON.`;
     }
   });
 
+  // Helper to look up client configuration for native Shadow DOM embed
+  function getClientConfigHelper(clientId: string) {
+    const defaults: Record<string, any> = {
+      'cl_apex_dental': {
+        name: 'Apex Dental Practice',
+        personaName: 'Sarah',
+        personaRole: 'Patient Care & Dental Scheduler',
+        industry: 'Dental Care',
+        primaryColor: '#0d9488',
+        launcherStyle: 'pill',
+        welcomeMessage: 'Welcome to Apex Dental! I am Sarah, your AI patient coordinator. How can I assist with your smile today?',
+        services: [
+          { name: 'Routine Dental Cleaning', durationMinutes: 45, price: '$150', description: 'Complete teeth cleaning and polishing.' },
+          { name: 'New Patient Exam & X-Rays', durationMinutes: 60, price: '$99', description: 'Comprehensive dental exam with digital x-rays.' }
+        ],
+        faqItems: [
+          { question: 'Do you accept insurance?', answer: 'Yes, we work with most major dental insurance providers!' },
+          { question: 'How do I book an appointment?', answer: 'You can select a service and available time slot right here in the chat!' }
+        ]
+      },
+      'cl_grandeur_hotel': {
+        name: 'The Grandeur Hotel & Spa',
+        personaName: 'Elena',
+        personaRole: 'Concierge & Guest Relations',
+        industry: 'Hospitality & Luxury Hotel',
+        primaryColor: '#4f46e5',
+        launcherStyle: 'pill',
+        welcomeMessage: 'Welcome to The Grandeur Hotel! I am Elena. Would you like to check room availability or reserve a spa session?',
+        services: [
+          { name: 'Luxury Suite Reservation', durationMinutes: 30, price: '$350/night', description: 'Spacious suite with ocean view.' },
+          { name: 'Spa & Relaxation Therapy', durationMinutes: 60, price: '$180', description: 'Full body massage and wellness therapy.' }
+        ],
+        faqItems: [
+          { question: 'What is check-in and check-out time?', answer: 'Check-in begins at 3:00 PM and check-out is by 11:00 AM.' },
+          { question: 'Is parking available?', answer: 'We offer complimentary valet parking for all registered guests.' }
+        ]
+      },
+      'cl_sterling_law': {
+        name: 'Sterling & Vance Family Law',
+        personaName: 'Victoria',
+        personaRole: 'Legal Intake Specialist',
+        industry: 'Legal Services',
+        primaryColor: '#1e293b',
+        launcherStyle: 'pill',
+        welcomeMessage: 'Welcome to Sterling & Vance. I am Victoria. How can we assist with your legal inquiry today?',
+        services: [
+          { name: 'Initial Case Evaluation', durationMinutes: 30, price: 'Free', description: 'Confidential review of your legal situation.' },
+          { name: 'Attorney Consultation', durationMinutes: 60, price: '$250', description: 'In-depth strategy session with a senior partner.' }
+        ],
+        faqItems: [
+          { question: 'What areas of law do you practice?', answer: 'We specialize in family law, estate planning, and civil litigation.' }
+        ]
+      },
+      'cl_lumina_realty': {
+        name: 'Lumina Real Estate & Homes',
+        personaName: 'Marcus',
+        personaRole: 'Property Advisor & Touring Agent',
+        industry: 'Real Estate',
+        primaryColor: '#059669',
+        launcherStyle: 'pill',
+        welcomeMessage: 'Welcome to Lumina Real Estate! I am Marcus. Looking to tour a property or browse new listings?',
+        services: [
+          { name: 'Private Home Tour', durationMinutes: 45, price: 'Free', description: 'Guided tour of your selected listing.' },
+          { name: 'Listing Valuation Review', durationMinutes: 30, price: 'Free', description: 'Market analysis of your property.' }
+        ],
+        faqItems: [
+          { question: 'Can I schedule a same-day home tour?', answer: 'Yes! Simply select "Private Home Tour" in the chat to see available times.' }
+        ]
+      }
+    };
+
+    return defaults[clientId] || {
+      name: 'AI Front Desk',
+      personaName: 'AI Assistant',
+      personaRole: 'AI Receptionist & Booking Coordinator',
+      industry: 'Professional Services',
+      primaryColor: '#0d9488',
+      launcherStyle: 'pill',
+      welcomeMessage: 'Hello! I am your AI front desk assistant. How can I help you learn about our services or schedule an appointment today?',
+      services: [
+        { name: 'Initial Consultation', durationMinutes: 30, price: 'Free', description: 'Introductory discussion on how we can assist your needs.' },
+        { name: 'Comprehensive Review Session', durationMinutes: 60, price: '$120', description: 'Full-service analysis and personalized recommendations.' }
+      ],
+      faqItems: [
+        { question: 'What services do you offer?', answer: 'We offer professional consultations, appointments, and support.' },
+        { question: 'How can I schedule an appointment?', answer: 'You can book directly right here in the chat assistant!' }
+      ]
+    };
+  }
+
+  // API Route: Get Client Configuration for Native Embed
+  app.get('/api/client-config', (req: Request, res: Response) => {
+    const clientId = (req.query.clientId as string) || (req.query.client as string) || 'cl_apex_dental';
+    const config = getClientConfigHelper(clientId);
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.status(200).json({ success: true, config });
+  });
+
   // API Route: AI Chat with Gemini 3.6 Flash
   app.post('/api/chat', async (req: Request, res: Response) => {
-    const { clientId, userMessage, history, visitorContext, clientConfig } = req.body;
+    const { clientId, userMessage, history, visitorContext, clientConfig: passedConfig } = req.body;
 
-    if (!clientConfig || !userMessage) {
-      return res.status(400).json({ error: 'Missing required configuration or message parameters' });
+    let clientConfig = passedConfig;
+    if (!clientConfig) {
+      clientConfig = getClientConfigHelper(clientId || 'cl_apex_dental');
+    }
+
+    if (!userMessage) {
+      return res.status(400).json({ error: 'Missing required userMessage parameter' });
     }
 
     const ai = getGeminiClient();
