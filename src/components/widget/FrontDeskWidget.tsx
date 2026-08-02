@@ -33,7 +33,7 @@ import { ApiService } from '../../services/api';
 
 interface FrontDeskWidgetProps {
   client: ClientWebsite;
-  mode?: 'floating' | 'inline';
+  mode?: 'floating' | 'inline' | 'embed_window';
   onClose?: () => void;
   onAppointmentBooked?: (appointment: AppointmentItem) => void;
   onLeadCaptured?: (lead: LeadItem) => void;
@@ -138,7 +138,7 @@ export const FrontDeskWidget: React.FC<FrontDeskWidgetProps> = ({
   onLeadCaptured,
   defaultOpen = false
 }) => {
-  const [isOpen, setIsOpen] = useState(mode === 'inline' || defaultOpen);
+  const [isOpen, setIsOpen] = useState(mode === 'inline' || mode === 'embed_window' || defaultOpen);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -512,6 +512,8 @@ export const FrontDeskWidget: React.FC<FrontDeskWidgetProps> = ({
                 ? 'left-1/2 -translate-x-1/2'
                 : 'right-4'
             } w-[380px] max-w-[95vw] h-[600px] max-h-[82vh] z-50 shadow-2xl ${radiusClass} border border-slate-200`
+          : mode === 'embed_window'
+          ? 'w-full h-full min-h-full max-h-full border-0 shadow-none rounded-none'
           : `w-full h-full min-h-[580px] max-h-[700px] border border-slate-200 ${radiusClass} shadow-md`
       } bg-white flex flex-col overflow-hidden transition-all duration-300`}
     >
@@ -543,22 +545,23 @@ export const FrontDeskWidget: React.FC<FrontDeskWidgetProps> = ({
           >
             {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
           </button>
-          {mode === 'floating' && (
+          {(mode === 'floating' || mode === 'inline' || mode === 'embed_window' || (typeof window !== 'undefined' && window.parent !== window)) && (
             <button
-              onClick={toggleOpen}
+              onClick={() => {
+                if (mode === 'floating') {
+                  toggleOpen();
+                }
+                if (typeof window !== 'undefined' && window.parent !== window) {
+                  window.parent.postMessage({ type: 'AIFRONTDESK_CLOSE' }, '*');
+                }
+                if (onClose) {
+                  onClose();
+                }
+              }}
               className="p-1.5 hover:bg-white/20 rounded-lg transition-colors text-white"
-              title="Minimize chat"
+              title="Close chat window"
             >
-              <Minimize2 className="w-4 h-4" />
-            </button>
-          )}
-          {onClose && (
-            <button
-              onClick={onClose}
-              className="p-1.5 hover:bg-white/20 rounded-lg transition-colors text-white"
-              title="Close chat"
-            >
-              <X className="w-4 h-4" />
+              {mode === 'embed_window' ? <X className="w-4 h-4" /> : <Minimize2 className="w-4 h-4" />}
             </button>
           )}
         </div>

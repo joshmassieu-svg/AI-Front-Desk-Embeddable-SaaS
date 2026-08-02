@@ -134,7 +134,7 @@ export default function App() {
   const currentClient = clients.find(c => c.id === selectedClientId) || clients[0];
 
   // =========================================================
-  // 1. EMBEDDED WIDGET STANDALONE MODE (Legacy fallback / direct URL test)
+  // 1. EMBEDDED WIDGET STANDALONE MODE (Chat Window Iframe or direct URL test)
   // =========================================================
   if (isEmbeddedMode) {
     const targetClient = clients.find(c => c.id === embedClientIdParam) || clients[0];
@@ -145,12 +145,15 @@ export default function App() {
         </div>
       );
     }
+    const urlParams = new URLSearchParams(window.location.search);
+    const isWindowOnly = urlParams.get('windowOnly') === 'true' || urlParams.get('mode') === 'embed_window' || urlParams.get('mode') === 'inline';
+
     return (
-      <div className="w-full h-full min-h-screen bg-transparent flex items-end justify-end p-2 font-sans">
+      <div className={`w-full h-full bg-transparent flex items-end justify-end ${isWindowOnly ? 'p-0 min-h-0' : 'p-2 min-h-screen'} font-sans`}>
         <FrontDeskWidget
           client={targetClient}
-          mode="floating"
-          defaultOpen={false}
+          mode={isWindowOnly ? "embed_window" : "floating"}
+          defaultOpen={isWindowOnly ? true : false}
           onAppointmentBooked={handleNewAppointmentBooked}
           onLeadCaptured={handleNewLeadCaptured}
         />
