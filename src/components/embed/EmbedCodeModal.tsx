@@ -77,9 +77,14 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
           <div className="bg-teal-50 border border-teal-200 rounded-xl p-4 flex items-start gap-3">
             <ShieldCheck className="w-5 h-5 text-teal-600 shrink-0 mt-0.5" />
             <div className="text-sm text-teal-900">
-              <p className="font-semibold">Ready for production on any website</p>
+              <div className="flex items-center gap-2">
+                <p className="font-semibold">Ready for production on any website</p>
+                <span className="bg-teal-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  Zero-Iframe Native DOM
+                </span>
+              </div>
               <p className="text-xs text-teal-800 mt-1">
-                Copy and paste this snippet into your client's HTML <code className="bg-teal-100 px-1 rounded-sm">&lt;head&gt;</code> or footer before the closing <code className="bg-teal-100 px-1 rounded-sm">&lt;/body&gt;</code> tag. The AI Front Desk widget will automatically initialize and load the custom persona, knowledge base, and booking rules.
+                Copy and paste this snippet into your client's HTML <code className="bg-teal-100 px-1 rounded-sm">&lt;head&gt;</code> or footer before the closing <code className="bg-teal-100 px-1 rounded-sm">&lt;/body&gt;</code> tag. Renders 100% natively via Shadow DOM without layout shifts or iframe restrictions.
               </p>
             </div>
           </div>
@@ -107,7 +112,7 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
                 }`}
               >
                 <Globe className="w-4 h-4" />
-                HTML &lt;iframe&gt;
+                HTML / JS (&lt;div&gt; Embed)
               </button>
               <button
                 onClick={() => setActiveTab('react')}

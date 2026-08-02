@@ -490,48 +490,46 @@ export const ApiService = {
     wordpressShortcode: string;
   } {
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://aifrontdesk.ai';
-    let iframeStyle = "position:fixed; bottom:16px; right:16px; width:420px; max-width:calc(100vw - 32px); height:110px; max-height:110px; border:none; z-index:999999; background:transparent; border-radius:0px; box-shadow:none; transition:all 0.3s cubic-bezier(0.16,1,0.3,1); color-scheme:normal;";
-    if (position === 'bottom-left') {
-      iframeStyle = "position:fixed; bottom:16px; left:16px; width:420px; max-width:calc(100vw - 32px); height:110px; max-height:110px; border:none; z-index:999999; background:transparent; border-radius:0px; box-shadow:none; transition:all 0.3s cubic-bezier(0.16,1,0.3,1); color-scheme:normal;";
-    } else if (position === 'bottom-center') {
-      iframeStyle = "position:fixed; bottom:16px; left:50%; transform:translateX(-50%); width:420px; max-width:calc(100vw - 32px); height:110px; max-height:110px; border:none; z-index:999999; background:transparent; border-radius:0px; box-shadow:none; transition:all 0.3s cubic-bezier(0.16,1,0.3,1); color-scheme:normal;";
-    }
 
-    const scriptTag = `<!-- AI Front Desk Shadow DOM Popup Embed -->
+    const scriptTag = `<!-- AI Front Desk 100% Native Shadow DOM Widget (Zero Iframes) -->
 <script 
-  src="${baseUrl}/api/embed.js?client=${clientId}&position=${position}" 
+  src="${baseUrl}/api/embed.js?client=${clientId}&position=${position}&v=2.0" 
   data-client-id="${clientId}" 
   data-position="${position}" 
   async>
 </script>`;
 
-    const iframeSnippet = `<!-- AI Front Desk Popup Modal Embed (HTML / JS) -->
+    const iframeSnippet = `<!-- AI Front Desk Native HTML / JS Embed (Zero Iframes) -->
 <div id="ai-frontdesk-popup-root-${clientId}"></div>
 <script>
   (function() {
     var s = document.createElement("script");
-    s.src = "${baseUrl}/api/embed.js?client=${clientId}&position=${position}";
+    s.src = "${baseUrl}/api/embed.js?client=${clientId}&position=${position}&v=2.0";
     s.async = true;
     document.head.appendChild(s);
   })();
 </script>`;
 
-    const reactSnippet = `// React / Next.js Component Embed
+    const reactSnippet = `// React / Next.js Component Embed (100% Native DOM, Zero Iframes)
 import { useEffect } from 'react';
 
 export function AiFrontDeskWidget({ clientId = "${clientId}", position = "${position}" }) {
   useEffect(() => {
     const script = document.createElement("script");
-    script.src = "${baseUrl}/api/embed.js?client=" + clientId + "&position=" + position;
+    script.src = "${baseUrl}/api/embed.js?client=" + clientId + "&position=" + position + "&v=2.0";
     script.setAttribute("data-position", position);
     script.async = true;
     document.body.appendChild(script);
-    return () => { document.body.removeChild(script); };
+    return () => {
+      if (script.parentNode) script.parentNode.removeChild(script);
+      const host = document.getElementById("ai-frontdesk-shadow-host-" + clientId);
+      if (host && host.parentNode) host.parentNode.removeChild(host);
+    };
   }, [clientId, position]);
   return null;
 }`;
 
-    const wordpressShortcode = `[ai_frontdesk_embed client_id="${clientId}" position="${position}"]`;
+    const wordpressShortcode = `[ai_frontdesk_embed client_id="${clientId}" position="${position}" native="true"]`;
 
     return {
       scriptTag,

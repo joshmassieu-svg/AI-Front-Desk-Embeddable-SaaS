@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+html, body, #root {
+  background-color: transparent !important;
+}
+
 @keyframes conicSpin {
   0% {
     transform: rotate(0deg);

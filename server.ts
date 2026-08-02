@@ -445,6 +445,12 @@ async function startServer() {
           if (clientConfig.primaryColor) {
             if (launcherBtn) launcherBtn.style.background = clientConfig.primaryColor;
           }
+          updateLauncher(
+            clientConfig.launcherStyle,
+            clientConfig.name || clientConfig.personaName,
+            clientConfig.primaryColor,
+            clientConfig.customLauncherCode
+          );
           chatBody.innerHTML = "";
           appendMessage("assistant", clientConfig.welcomeMessage || "Hello! How can I help you learn about our services or schedule an appointment today?");
           renderQuickPills(["📅 Book Appointment", "💼 Services & Pricing", "📞 Request Callback"]);

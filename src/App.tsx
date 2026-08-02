@@ -134,7 +134,7 @@ export default function App() {
   const currentClient = clients.find(c => c.id === selectedClientId) || clients[0];
 
   // =========================================================
-  // 1. EMBEDDED WIDGET STANDALONE MODE (Served to external sites via iframe/script)
+  // 1. EMBEDDED WIDGET STANDALONE MODE (Legacy fallback / direct URL test)
   // =========================================================
   if (isEmbeddedMode) {
     const targetClient = clients.find(c => c.id === embedClientIdParam) || clients[0];
