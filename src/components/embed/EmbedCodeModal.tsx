@@ -29,7 +29,7 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
   const [activeTab, setActiveTab] = useState<'script' | 'iframe' | 'react' | 'wordpress'>('script');
   const [copied, setCopied] = useState(false);
 
-  const snippets = ApiService.getEmbedCode(client.id);
+  const snippets = ApiService.getEmbedCode(client.id, client.widgetPosition);
 
   const getActiveCode = () => {
     switch (activeTab) {

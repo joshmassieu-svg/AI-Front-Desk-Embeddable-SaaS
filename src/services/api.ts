@@ -483,43 +483,51 @@ export const ApiService = {
     return { message, toolAction };
   },
 
-  getEmbedCode(clientId: string): {
+  getEmbedCode(clientId: string, position: string = 'bottom-right'): {
     scriptTag: string;
     iframeSnippet: string;
     reactSnippet: string;
     wordpressShortcode: string;
   } {
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://aifrontdesk.ai';
+    let iframeStyle = "position:fixed; bottom:20px; right:20px; width:380px; height:600px; border:none; z-index:999999; border-radius:16px; box-shadow: 0 10px 30px rgba(0,0,0,0.18);";
+    if (position === 'bottom-left') {
+      iframeStyle = "position:fixed; bottom:20px; left:20px; width:380px; height:600px; border:none; z-index:999999; border-radius:16px; box-shadow: 0 10px 30px rgba(0,0,0,0.18);";
+    } else if (position === 'bottom-center') {
+      iframeStyle = "position:fixed; bottom:20px; left:50%; transform:translateX(-50%); width:380px; height:600px; border:none; z-index:999999; border-radius:16px; box-shadow: 0 10px 30px rgba(0,0,0,0.18);";
+    }
+
     const scriptTag = `<!-- AI Front Desk Embed Script -->
 <script 
   src="${baseUrl}/api/embed.js?client=${clientId}" 
   data-client-id="${clientId}" 
-  data-position="bottom-right" 
+  data-position="${position}" 
   async>
 </script>`;
 
     const iframeSnippet = `<!-- AI Front Desk Iframe Embed -->
 <iframe 
   src="${baseUrl}/?embed=true&clientId=${clientId}" 
-  style="position:fixed; bottom:20px; right:20px; width:380px; height:600px; border:none; z-index:999999; border-radius:16px; box-shadow: 0 10px 30px rgba(0,0,0,0.18);" 
+  style="${iframeStyle}" 
   allow="microphone">
 </iframe>`;
 
     const reactSnippet = `// React / Next.js Component Embed
 import { useEffect } from 'react';
 
-export function AiFrontDeskWidget({ clientId = "${clientId}" }) {
+export function AiFrontDeskWidget({ clientId = "${clientId}", position = "${position}" }) {
   useEffect(() => {
     const script = document.createElement("script");
     script.src = "${baseUrl}/api/embed.js?client=" + clientId;
+    script.setAttribute("data-position", position);
     script.async = true;
     document.body.appendChild(script);
     return () => { document.body.removeChild(script); };
-  }, [clientId]);
+  }, [clientId, position]);
   return null;
 }`;
 
-    const wordpressShortcode = `[ai_frontdesk_embed client_id="${clientId}" position="bottom-right"]`;
+    const wordpressShortcode = `[ai_frontdesk_embed client_id="${clientId}" position="${position}"]`;
 
     return {
       scriptTag,

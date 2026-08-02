@@ -26,7 +26,8 @@ import {
   AppointmentItem, 
   LeadItem,
   DEFAULT_ASK_AI_BAR_CONFIG,
-  AskAiBarConfig
+  AskAiBarConfig,
+  DEFAULT_CUSTOM_LAUNCHER_CODE
 } from '../../types';
 import { ApiService } from '../../services/api';
 
@@ -434,7 +435,13 @@ export const FrontDeskWidget: React.FC<FrontDeskWidgetProps> = ({
               </div>
             </div>
           );
-        })() : launcher === 'pill' ? (
+        })() : launcher === 'custom_code' ? (
+          <div
+            onClick={toggleOpen}
+            className="cursor-pointer transition-transform hover:scale-105"
+            dangerouslySetInnerHTML={{ __html: client.customLauncherCode || DEFAULT_CUSTOM_LAUNCHER_CODE }}
+          />
+        ) : launcher === 'pill' ? (
           <button
             onClick={toggleOpen}
             style={bubbleStyle}

@@ -45,7 +45,25 @@ export type WidgetTemplateType =
   | 'dark_minimal'
   | 'glass_morphism';
 
-export type LauncherStyleType = 'circle' | 'pill' | 'avatar' | 'ask_ai_bar';
+export type LauncherStyleType = 'circle' | 'pill' | 'avatar' | 'ask_ai_bar' | 'custom_code';
+
+export const DEFAULT_CUSTOM_LAUNCHER_CODE = `<div style="
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  color: #f8fafc;
+  padding: 12px 22px;
+  border-radius: 9999px;
+  font-family: system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+">
+  <span style="display: inline-block; width: 8px; height: 8px; background: #10b981; border-radius: 50%; box-shadow: 0 0 8px #10b981;"></span>
+  <span>Custom AI Assistant</span>
+</div>`;
 
 export type AskAiBarPalette = 
   | 'cyberpunk' 
@@ -89,6 +107,7 @@ export interface ClientWebsite {
   widgetTemplate?: WidgetTemplateType;
   launcherStyle?: LauncherStyleType;
   askAiBarConfig?: AskAiBarConfig;
+  customLauncherCode?: string;
   widgetRadius?: 'rounded-none' | 'rounded-lg' | 'rounded-2xl' | 'rounded-3xl';
   widgetTitle: string;
   personaName: string;

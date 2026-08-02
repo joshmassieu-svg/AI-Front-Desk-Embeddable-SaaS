@@ -165,7 +165,7 @@ export const WebsiteSimulator: React.FC<WebsiteSimulatorProps> = ({
       <div className="flex-1 flex overflow-hidden relative bg-slate-950 p-4 sm:p-6 justify-center overflow-y-auto">
         {/* Simulated Website Frame */}
         <div
-          className={`${getContainerWidthClass()} bg-white text-slate-800 rounded-2xl shadow-2xl overflow-y-auto border border-slate-800 transition-all duration-300 relative flex flex-col`}
+          className={`${getContainerWidthClass()} bg-white text-slate-800 rounded-2xl shadow-2xl overflow-y-auto border border-slate-800 transition-all duration-300 relative flex flex-col [transform:translate3d(0,0,0)]`}
           style={{ minHeight: '100%' }}
         >
           {/* Simulated Browser URL bar */}

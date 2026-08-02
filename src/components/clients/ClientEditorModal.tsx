@@ -13,7 +13,8 @@ import {
   Globe,
   Sparkles,
   FileText,
-  Database
+  Database,
+  Code
 } from 'lucide-react';
 import { 
   ClientWebsite, 
@@ -22,7 +23,8 @@ import {
   FaqItem, 
   WidgetPosition,
   WidgetTemplateType,
-  LauncherStyleType
+  LauncherStyleType,
+  DEFAULT_CUSTOM_LAUNCHER_CODE
 } from '../../types';
 
 interface ClientEditorModalProps {
@@ -47,6 +49,9 @@ export const ClientEditorModal: React.FC<ClientEditorModalProps> = ({
   );
   const [launcherStyle, setLauncherStyle] = useState<LauncherStyleType>(
     client?.launcherStyle || 'pill'
+  );
+  const [customLauncherCode, setCustomLauncherCode] = useState(
+    client?.customLauncherCode || DEFAULT_CUSTOM_LAUNCHER_CODE
   );
   const [widgetRadius, setWidgetRadius] = useState<'rounded-none' | 'rounded-lg' | 'rounded-2xl' | 'rounded-3xl'>(
     client?.widgetRadius || 'rounded-2xl'
@@ -179,6 +184,7 @@ export const ClientEditorModal: React.FC<ClientEditorModalProps> = ({
       workspaceName,
       widgetTemplate,
       launcherStyle,
+      customLauncherCode,
       widgetRadius,
       widgetTitle: 'Front Desk Assistant',
       personaName,
@@ -424,11 +430,39 @@ export const ClientEditorModal: React.FC<ClientEditorModalProps> = ({
                   <option value="ask_ai_bar">Ask AI Search Bar (Interactive Embed)</option>
                   <option value="circle">Circle Icon Button</option>
                   <option value="avatar">Assistant Avatar Circle Button</option>
+                  <option value="custom_code">Custom HTML/CSS Code (Advanced)</option>
                 </select>
                 {launcherStyle === 'ask_ai_bar' && (
                   <div className="mt-1.5 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-teal-50 border border-teal-200/80 text-[11px] text-teal-800 font-medium">
                     <Sparkles className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-                    <span>Includes Neon Glow, Conic Gradient Rotation &amp; Active AI Shimmer</span>
+                    <span>Includes Neon Glow, Conic Gradient Rotation & Active AI Shimmer</span>
+                  </div>
+                )}
+                {launcherStyle === 'custom_code' && (
+                  <div className="mt-2.5 p-3 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 space-y-2">
+                    <div className="flex items-center justify-between text-xs font-semibold text-slate-300">
+                      <span className="flex items-center gap-1.5">
+                        <Code className="w-3.5 h-3.5 text-teal-400" />
+                        Custom HTML / CSS Markup
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setCustomLauncherCode(DEFAULT_CUSTOM_LAUNCHER_CODE)}
+                        className="text-[10px] text-teal-400 hover:text-teal-300 underline"
+                      >
+                        Reset to Default
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-slate-400 leading-snug">
+                      Enter any HTML code with inline styles. Clicking this element will open the widget.
+                    </p>
+                    <textarea
+                      value={customLauncherCode}
+                      onChange={(e) => setCustomLauncherCode(e.target.value)}
+                      rows={6}
+                      className="w-full font-mono text-xs bg-slate-950 border border-slate-700 rounded p-2.5 text-emerald-300 focus:outline-none focus:border-teal-500"
+                      placeholder="<div style='...'>Custom Button</div>"
+                    />
                   </div>
                 )}
               </div>
