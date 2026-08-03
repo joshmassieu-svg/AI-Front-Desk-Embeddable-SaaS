@@ -54,26 +54,35 @@
   container.style.flexDirection = 'column';
   container.style.alignItems = 'flex-end';
 
-  // 6. Create Chat Window iframe (Hidden initially)
-  var iframe = document.createElement('iframe');
-  iframe.src = baseUrl + '/?embed=true&clientId=' + encodeURIComponent(clientId);
-  iframe.style.border = 'none';
-  iframe.style.background = 'transparent';
-  iframe.style.width = '400px';
-  iframe.style.height = '640px';
-  iframe.style.maxHeight = '90vh';
-  iframe.style.maxWidth = '95vw';
-  iframe.style.borderRadius = '20px';
-  iframe.style.boxShadow = '0 20px 40px rgba(0,0,0,0.18)';
-  iframe.style.marginBottom = '16px';
-  iframe.allow = 'microphone; clipboard-write';
-  iframe.setAttribute('allowtransparency', 'true');
-
+  // 6. Chat Window iframe variable (Lazy instantiated on first open click)
+  var iframe = null;
   var isOpen = false;
-  iframe.style.display = 'none';
-  iframe.style.opacity = '0';
-  iframe.style.transform = 'translateY(12px)';
-  iframe.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+
+  function createIframe() {
+    if (iframe) return iframe;
+    iframe = document.createElement('iframe');
+    iframe.src = baseUrl + '/?embed=true&clientId=' + encodeURIComponent(clientId);
+    iframe.style.border = 'none';
+    iframe.style.background = 'transparent';
+    iframe.style.width = '400px';
+    iframe.style.height = '640px';
+    iframe.style.maxHeight = '90vh';
+    iframe.style.maxWidth = '95vw';
+    iframe.style.borderRadius = '20px';
+    iframe.style.boxShadow = '0 20px 40px rgba(0,0,0,0.18)';
+    iframe.style.marginBottom = '16px';
+    iframe.allow = 'microphone; clipboard-write';
+    iframe.setAttribute('allowtransparency', 'true');
+    iframe.style.display = 'none';
+    iframe.style.opacity = '0';
+    iframe.style.transform = 'translateY(12px)';
+    iframe.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+    
+    // Insert iframe before button inside container
+    container.insertBefore(iframe, button);
+    updateSize();
+    return iframe;
+  }
 
   // 7. Create Launcher Button (Default styles apply until remote CSS loads)
   var button = document.createElement('button');
@@ -99,21 +108,22 @@
   button.onmouseenter = function() { button.style.transform = 'scale(1.05)'; };
   button.onmouseleave = function() { button.style.transform = 'scale(1)'; };
 
-  // 8. Toggle Logic
+  // 8. Toggle Logic (Strict lazy loading of iframe)
   function toggleChat(show) {
     isOpen = typeof show === 'boolean' ? show : !isOpen;
     if (isOpen) {
-      iframe.style.display = 'block';
+      var frame = createIframe();
+      frame.style.display = 'block';
       setTimeout(function() {
-        iframe.style.opacity = '1';
-        iframe.style.transform = 'translateY(0)';
+        frame.style.opacity = '1';
+        frame.style.transform = 'translateY(0)';
       }, 10);
       button.innerHTML = '✕';
-    } else {
+    } else if (iframe) {
       iframe.style.opacity = '0';
       iframe.style.transform = 'translateY(12px)';
       setTimeout(function() {
-        iframe.style.display = 'none';
+        if (iframe) iframe.style.display = 'none';
       }, 250);
       button.innerHTML = '💬';
     }
@@ -157,6 +167,7 @@
 
   // 12. Responsive Sizing
   function updateSize() {
+    if (!iframe) return;
     if (window.innerWidth < 480) {
       iframe.style.width = 'calc(100vw - 32px)';
       iframe.style.height = 'calc(100vh - 110px)';
@@ -170,10 +181,8 @@
     }
   }
   window.addEventListener('resize', updateSize);
-  updateSize();
 
-  // Mount elements
-  container.appendChild(iframe);
+  // Mount launcher button container only (no iframe in DOM until click)
   container.appendChild(button);
   document.body.appendChild(container);
 })();
