@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
+import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 
@@ -38,560 +39,30 @@ async function startServer() {
     res.json({ status: 'ok', time: new Date().toISOString() });
   });
 
-  // API Route: Dynamic embed.js script generator for Client Websites
-  app.get(['/api/embed.js', '/embed.js'], (req: Request, res: Response) => {
-    const clientId = (req.query.client as string) || 'cl_apex_dental';
-    const position = (req.query.position as string) || 'bottom-right';
-    const host = req.headers.host || 'localhost:3000';
-    const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
-    const baseUrl = `${protocol}://${host}`;
-
+  // API Route: Serve embed.js script for Client Websites
+  app.get(['/api/embed.js', '/embed.js'], (req, res) => {
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
 
-    const scriptContent = `
-(function() {
-  var CLIENT_ID = "${clientId}";
-  var BASE_URL = "${baseUrl}";
-  var POSITION = "${position}";
-  var EXISTING = document.getElementById("ai-frontdesk-shadow-host-" + CLIENT_ID);
-  if (EXISTING) return;
-
-  // 1. Create Shadow DOM Host container (isolated from host website CSS)
-  var host = document.createElement("div");
-  host.id = "ai-frontdesk-shadow-host-" + CLIENT_ID;
-  host.style.position = "fixed";
-  host.style.top = "0";
-  host.style.left = "0";
-  host.style.width = "0";
-  host.style.height = "0";
-  host.style.zIndex = "2147483647";
-  host.style.pointerEvents = "none";
-  document.body.appendChild(host);
-
-  var shadow = host.attachShadow({ mode: "open" });
-
-  // 2. Insulated CSS inside Shadow DOM (no leakage in or out)
-  var style = document.createElement("style");
-  style.textContent = \`
-    * { box-sizing: border-box; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; }
-    
-    .afd-launcher-wrapper {
-      pointer-events: auto;
-      position: fixed;
-      bottom: 20px;
-      z-index: 2147483647;
-      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-      cursor: pointer;
-    }
-    .afd-pos-bottom-right { right: 20px; left: auto; }
-    .afd-pos-bottom-left { left: 20px; right: auto; }
-    .afd-pos-bottom-center { left: 50%; transform: translateX(-50%); right: auto; }
-    
-    /* Pill Button Style */
-    .afd-btn-pill {
-      background: #0d9488;
-      color: #ffffff;
-      padding: 14px 22px;
-      border-radius: 9999px;
-      font-weight: 700;
-      font-size: 14px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.22);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    .afd-btn-pill:hover {
-      transform: scale(1.05);
-      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.28);
-    }
-    .afd-icon-circle {
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.2);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    /* Ask AI Bar Style */
-    .afd-btn-ask-ai-bar {
-      background: #0f172a;
-      color: #ffffff;
-      padding: 6px 6px 6px 16px;
-      border-radius: 20px;
-      font-weight: 600;
-      font-size: 13px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.35);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      width: 320px;
-      max-width: calc(100vw - 40px);
-      transition: transform 0.2s ease;
-    }
-    .afd-btn-ask-ai-bar:hover {
-      transform: scale(1.02);
-    }
-    .afd-ai-badge {
-      font-size: 10px;
-      font-weight: 800;
-      color: #5eead4;
-      background: rgba(20, 184, 166, 0.2);
-      padding: 3px 8px;
-      border-radius: 12px;
-      letter-spacing: 0.5px;
-    }
-    .afd-ask-btn {
-      background: #0d9488;
-      color: #fff;
-      padding: 8px 14px;
-      border-radius: 14px;
-      font-weight: 700;
-      font-size: 12px;
-      margin-left: auto;
-      white-space: nowrap;
-    }
-
-    /* Circle / Avatar Button Style */
-    .afd-btn-circle {
-      width: 60px;
-      height: 60px;
-      border-radius: 50%;
-      background: #0d9488;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      transition: transform 0.2s ease;
-    }
-    .afd-btn-circle:hover { transform: scale(1.08); }
-
-    /* 100% Native Popup Modal Window (Zero Iframes) */
-    .afd-popup-modal {
-      display: none;
-      opacity: 0;
-      pointer-events: auto;
-      position: fixed;
-      bottom: 20px;
-      width: 400px;
-      height: 600px;
-      max-height: 85vh;
-      max-width: calc(100vw - 32px);
-      z-index: 2147483647;
-      background: #0f172a;
-      border-radius: 20px;
-      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.45);
-      overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      transition: opacity 0.25s ease, transform 0.25s ease;
-      transform: translateY(16px);
-      flex-direction: column;
-    }
-    .afd-popup-modal.open {
-      display: flex;
-      opacity: 1;
-      transform: translateY(0);
-    }
-    .afd-pos-bottom-right.afd-popup-modal { right: 20px; left: auto; }
-    .afd-pos-bottom-left.afd-popup-modal { left: 20px; right: auto; }
-    .afd-pos-bottom-center.afd-popup-modal { left: 50%; transform: translateX(-50%); right: auto; }
-    .afd-pos-bottom-center.afd-popup-modal.open { transform: translateX(-50%) translateY(0); }
-
-    .afd-modal-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 14px 16px;
-      background: #1e293b;
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-      color: #f8fafc;
-      flex-shrink: 0;
-    }
-    .afd-header-info {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .afd-status-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #10b981;
-      box-shadow: 0 0 8px #10b981;
-    }
-    .afd-header-title {
-      font-weight: 700;
-      font-size: 14px;
-      color: #f8fafc;
-    }
-    .afd-header-sub {
-      font-size: 11px;
-      color: #94a3b8;
-    }
-    .afd-modal-close {
-      background: transparent;
-      border: none;
-      color: #94a3b8;
-      cursor: pointer;
-      font-size: 18px;
-      padding: 4px;
-      line-height: 1;
-    }
-    .afd-modal-close:hover { color: #fff; }
-
-    .afd-chat-body {
-      flex: 1;
-      overflow-y: auto;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      background: #0f172a;
-    }
-    .afd-bubble-ai {
-      background: #1e293b;
-      color: #f8fafc;
-      padding: 12px 14px;
-      border-radius: 16px 16px 16px 4px;
-      font-size: 14px;
-      line-height: 1.5;
-      max-width: 85%;
-      align-self: flex-start;
-      border: 1px solid rgba(255,255,255,0.08);
-      word-break: break-word;
-    }
-    .afd-bubble-user {
-      background: #0d9488;
-      color: #ffffff;
-      padding: 12px 14px;
-      border-radius: 16px 16px 4px 16px;
-      font-size: 14px;
-      line-height: 1.5;
-      max-width: 85%;
-      align-self: flex-end;
-      word-break: break-word;
-    }
-    .afd-quick-actions {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-      padding: 0 16px 10px 16px;
-      flex-shrink: 0;
-    }
-    .afd-quick-pill {
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.12);
-      color: #cbd5e1;
-      font-size: 12px;
-      padding: 6px 12px;
-      border-radius: 20px;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-    .afd-quick-pill:hover {
-      background: #0d9488;
-      color: #ffffff;
-      border-color: #0d9488;
-    }
-    .afd-input-bar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 12px 16px;
-      background: #1e293b;
-      border-top: 1px solid rgba(255,255,255,0.08);
-      flex-shrink: 0;
-    }
-    .afd-input-field {
-      flex: 1;
-      background: #0f172a;
-      border: 1px solid rgba(255,255,255,0.12);
-      color: #f8fafc;
-      padding: 10px 14px;
-      border-radius: 9999px;
-      font-size: 14px;
-      outline: none;
-    }
-    .afd-input-field:focus {
-      border-color: #0d9488;
-    }
-    .afd-send-btn {
-      background: #0d9488;
-      color: #ffffff;
-      border: none;
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: transform 0.15s ease;
-      flex-shrink: 0;
-    }
-    .afd-send-btn:hover {
-      transform: scale(1.06);
-    }
-
-    @media (max-width: 480px) {
-      .afd-popup-modal.open {
-        width: calc(100vw - 32px);
-        height: calc(100vh - 80px);
-        bottom: 16px;
-        right: 16px;
-        border-radius: 16px;
+    try {
+      const filePath = path.join(process.cwd(), 'public/api/embed.js');
+      if (fs.existsSync(filePath)) {
+        const scriptContent = fs.readFileSync(filePath, 'utf-8');
+        res.send(scriptContent);
+        return;
       }
-    }
-  \`;
-  shadow.appendChild(style);
-
-  // 3. Render Launcher Button inside Shadow DOM
-  var launcher = document.createElement("div");
-  launcher.className = "afd-launcher-wrapper afd-pos-" + POSITION;
-  launcher.innerHTML = \`
-    <div class="afd-btn-pill" id="afd-launcher-btn">
-      <div class="afd-icon-circle">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-        </svg>
-      </div>
-      <span id="afd-launcher-title">AI Assistant</span>
-    </div>
-  \`;
-  shadow.appendChild(launcher);
-
-  // 4. Render 100% Native Popup Modal Dialog inside Shadow DOM (ZERO IFRAMES)
-  var modal = document.createElement("div");
-  modal.className = "afd-popup-modal afd-pos-" + POSITION;
-  modal.innerHTML = \`
-    <div class="afd-modal-header">
-      <div class="afd-header-info">
-        <div class="afd-status-dot"></div>
-        <div>
-          <div class="afd-header-title" id="afd-title">AI Assistant</div>
-          <div class="afd-header-sub">Online • Instant Answers</div>
-        </div>
-      </div>
-      <button class="afd-modal-close" id="afd-close-btn" aria-label="Close">✕</button>
-    </div>
-    <div class="afd-chat-body" id="afd-chat-body"></div>
-    <div class="afd-quick-actions" id="afd-quick-actions"></div>
-    <form class="afd-input-bar" id="afd-input-form">
-      <input type="text" class="afd-input-field" id="afd-input-field" placeholder="Ask a question or book..." autocomplete="off" />
-      <button type="submit" class="afd-send-btn" aria-label="Send">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="22" y1="2" x2="11" y2="13"></line>
-          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-        </svg>
-      </button>
-    </form>
-  \`;
-  shadow.appendChild(modal);
-
-  var chatBody = modal.querySelector("#afd-chat-body");
-  var quickActions = modal.querySelector("#afd-quick-actions");
-  var inputForm = modal.querySelector("#afd-input-form");
-  var inputField = modal.querySelector("#afd-input-field");
-  var closeBtn = modal.querySelector("#afd-close-btn");
-  var launcherBtn = launcher.querySelector("#afd-launcher-btn");
-
-  var chatHistory = [];
-  var isTyping = false;
-  var clientConfig = null;
-
-  function appendMessage(sender, text) {
-    var bubble = document.createElement("div");
-    bubble.className = sender === "user" ? "afd-bubble-user" : "afd-bubble-ai";
-    bubble.textContent = text;
-    chatBody.appendChild(bubble);
-    chatBody.scrollTop = chatBody.scrollHeight;
-    return bubble;
-  }
-
-  function renderQuickPills(pills) {
-    quickActions.innerHTML = "";
-    pills.forEach(function(label) {
-      var pill = document.createElement("button");
-      pill.type = "button";
-      pill.className = "afd-quick-pill";
-      pill.textContent = label;
-      pill.addEventListener("click", function() {
-        sendMessage(label);
-      });
-      quickActions.appendChild(pill);
-    });
-  }
-
-  function fetchClientConfig() {
-    fetch(BASE_URL + "/api/client-config?clientId=" + encodeURIComponent(CLIENT_ID))
-      .then(function(res) { return res.json(); })
-      .then(function(data) {
-        if (data && data.success && data.config) {
-          clientConfig = data.config;
-          if (clientConfig.name || clientConfig.personaName) {
-            modal.querySelector("#afd-title").textContent = clientConfig.personaName || "AI Assistant";
-            var launcherTitle = launcher.querySelector("#afd-launcher-title");
-            if (launcherTitle) launcherTitle.textContent = clientConfig.personaName || "AI Assistant";
-          }
-          if (clientConfig.primaryColor) {
-            if (launcherBtn) launcherBtn.style.background = clientConfig.primaryColor;
-          }
-          updateLauncher(
-            clientConfig.launcherStyle,
-            clientConfig.name || clientConfig.personaName,
-            clientConfig.primaryColor,
-            clientConfig.customLauncherCode
-          );
-          chatBody.innerHTML = "";
-          appendMessage("assistant", clientConfig.welcomeMessage || "Hello! How can I help you learn about our services or schedule an appointment today?");
-          renderQuickPills(["📅 Book Appointment", "💼 Services & Pricing", "📞 Request Callback"]);
-        }
-      })
-      .catch(function(err) {
-        if (chatBody.children.length === 0) {
-          appendMessage("assistant", "Hello! How can I help you learn about our services or schedule an appointment today?");
-          renderQuickPills(["📅 Book Appointment", "💼 Services & Pricing", "📞 Request Callback"]);
-        }
-      });
-  }
-
-  function sendMessage(text) {
-    if (!text || !text.trim() || isTyping) return;
-    var trimmed = text.trim();
-    appendMessage("user", trimmed);
-    inputField.value = "";
-    isTyping = true;
-
-    var typingBubble = document.createElement("div");
-    typingBubble.className = "afd-bubble-ai";
-    typingBubble.style.fontStyle = "italic";
-    typingBubble.style.opacity = "0.7";
-    typingBubble.textContent = "AI is typing...";
-    chatBody.appendChild(typingBubble);
-    chatBody.scrollTop = chatBody.scrollHeight;
-
-    fetch(BASE_URL + "/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        clientId: CLIENT_ID,
-        userMessage: trimmed,
-        history: chatHistory,
-        clientConfig: clientConfig
-      })
-    })
-    .then(function(res) { return res.json(); })
-    .then(function(data) {
-      if (typingBubble && typingBubble.parentNode) typingBubble.parentNode.removeChild(typingBubble);
-      isTyping = false;
-      var replyText = data && data.message && data.message.text ? data.message.text : "I would be happy to help you! How else can I assist today?";
-      appendMessage("assistant", replyText);
-      chatHistory.push({ sender: "user", text: trimmed });
-      chatHistory.push({ sender: "assistant", text: replyText });
-    })
-    .catch(function(e) {
-      if (typingBubble && typingBubble.parentNode) typingBubble.parentNode.removeChild(typingBubble);
-      isTyping = false;
-      appendMessage("assistant", "I am here and ready to help! Could you please repeat your question?");
-    });
-  }
-
-  // Helper to dynamically update Launcher appearance based on client settings
-  function updateLauncher(styleType, title, primaryColor, customCode) {
-    if (primaryColor) {
-      launcherBtn.style.background = primaryColor;
-    }
-    if (title && launcher.querySelector("#afd-launcher-title")) {
-      launcher.querySelector("#afd-launcher-title").textContent = title;
-    }
-    if (styleType === "ask_ai_bar") {
-      launcher.innerHTML = \`
-        <div class="afd-btn-ask-ai-bar" id="afd-launcher-btn">
-          <span style="color: #94a3b8;">Ask AI about \` + (title || "us") + \`...</span>
-          <span class="afd-ai-badge">AI READY</span>
-          <div class="afd-ask-btn" style="background: \` + (primaryColor || "#0d9488") + \`">Ask AI</div>
-        </div>
-      \`;
-      launcherBtn = launcher.querySelector("#afd-launcher-btn");
-      bindLauncherClick();
-    } else if (styleType === "circle" || styleType === "avatar") {
-      launcher.innerHTML = \`
-        <div class="afd-btn-circle" id="afd-launcher-btn" style="background: \` + (primaryColor || "#0d9488") + \`">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-          </svg>
-        </div>
-      \`;
-      launcherBtn = launcher.querySelector("#afd-launcher-btn");
-      bindLauncherClick();
-    } else if (styleType === "custom_code" && customCode) {
-      launcher.innerHTML = customCode;
-      launcherBtn = launcher.firstElementChild || launcher;
-      bindLauncherClick();
-    }
-  }
-
-  function toggleModal(open) {
-    if (open) {
-      modal.classList.add("open");
-      launcher.style.display = "none";
-      if (!clientConfig) fetchClientConfig();
-      setTimeout(function() { inputField.focus(); }, 100);
-    } else {
-      modal.classList.remove("open");
-      launcher.style.display = "block";
-    }
-  }
-
-  function bindLauncherClick() {
-    if (launcherBtn) {
-      launcherBtn.addEventListener("click", function() {
-        toggleModal(true);
-      });
-    }
-  }
-  bindLauncherClick();
-
-  // Global Document Listener for any client trigger (data-ai-frontdesk-open="true")
-  document.addEventListener("click", function(e) {
-    var trigger = e.target.closest('[data-ai-frontdesk-open="true"], .open-ai-frontdesk');
-    if (trigger) {
-      e.preventDefault();
-      toggleModal(true);
-    }
-  });
-
-  // Listen for Widget Messages (resize, close, style sync)
-  window.addEventListener("message", function(e) {
-    var data = e.data;
-    if (data && data.type === "AIFRONTDESK_RESIZE") {
-      if (data.launcherStyle || data.widgetTitle || data.primaryColor || data.customLauncherCode) {
-        updateLauncher(data.launcherStyle, data.widgetTitle, data.primaryColor, data.customLauncherCode);
+      const fallbackPath = path.join(process.cwd(), 'public/embed.js');
+      if (fs.existsSync(fallbackPath)) {
+        const scriptContent = fs.readFileSync(fallbackPath, 'utf-8');
+        res.send(scriptContent);
+        return;
       }
-      if (data.isOpen) {
-        modal.classList.add("open");
-        launcher.style.display = "none";
-      } else {
-        modal.classList.remove("open");
-        launcher.style.display = "block";
-      }
+      res.status(404).send('// AI Front Desk embed script not found');
+    } catch (err) {
+      res.status(500).send('// Error loading embed script');
     }
-  });
-
-  // Load client config right away for launcher button style and welcome message
-  fetchClientConfig();
-})();
-`;
-    res.send(scriptContent);
   });
 
   // API Route: Website Crawler & AI Knowledge Base Extractor
@@ -859,6 +330,40 @@ Respond ONLY with valid JSON.`;
     const config = getClientConfigHelper(clientId);
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.status(200).json({ success: true, config });
+  });
+
+  // API Route: Get Widget Configuration & Custom CSS for embed.js
+  app.get('/api/widget-config', async (req: Request, res: Response) => {
+    // Allow cross-origin requests from any client website
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+
+    const clientId = (req.query.clientId as string) || (req.query.client as string) || 'cl_apex_dental';
+
+    try {
+      // Look up client config from database / helper
+      const config = getClientConfigHelper(clientId);
+      const primaryColor = config?.primaryColor || '#007bff';
+
+      // Example response structure with saved/dynamic custom CSS for the launcher
+      const customCss = config?.customCss || `.ai-frontdesk-launcher-${clientId} {
+      background: linear-gradient(135deg, ${primaryColor}, #00d2ff) !important;
+      border-radius: 50px !important;
+      padding: 12px 24px !important;
+      width: auto !important;
+      height: 50px !important;
+      font-weight: bold !important;
+    }`;
+
+      res.json({
+        success: true,
+        clientId: clientId,
+        customCss: customCss || '' // Return saved custom CSS string
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, error: 'Config fetch failed' });
+    }
   });
 
   // API Route: AI Chat with Gemini 3.6 Flash

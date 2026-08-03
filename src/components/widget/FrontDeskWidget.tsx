@@ -33,7 +33,7 @@ import { ApiService } from '../../services/api';
 
 interface FrontDeskWidgetProps {
   client: ClientWebsite;
-  mode?: 'floating' | 'inline';
+  mode?: 'floating' | 'inline' | 'embedded';
   onClose?: () => void;
   onAppointmentBooked?: (appointment: AppointmentItem) => void;
   onLeadCaptured?: (lead: LeadItem) => void;
@@ -138,7 +138,7 @@ export const FrontDeskWidget: React.FC<FrontDeskWidgetProps> = ({
   onLeadCaptured,
   defaultOpen = false
 }) => {
-  const [isOpen, setIsOpen] = useState(mode === 'inline' || defaultOpen);
+  const [isOpen, setIsOpen] = useState(mode === 'inline' || mode === 'embedded' || defaultOpen);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);

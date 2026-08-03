@@ -177,17 +177,21 @@ export interface LeadItem {
   conversationId?: string;
 }
 
-export type AppointmentStatus = 'confirmed' | 'rescheduled' | 'cancelled' | 'completed';
+export type AppointmentStatus = 'pending' | 'confirmed' | 'rescheduled' | 'cancelled' | 'completed';
 
 export interface AppointmentItem {
   id: string;
   clientId: string;
   visitorName: string;
   visitorEmail: string;
+  email?: string;
   visitorPhone?: string;
+  phone?: string;
   serviceName: string;
   date: string; // YYYY-MM-DD
+  preferredDate?: string;
   time: string; // HH:MM
+  preferredTime?: string;
   durationMinutes: number;
   status: AppointmentStatus;
   notes?: string;
