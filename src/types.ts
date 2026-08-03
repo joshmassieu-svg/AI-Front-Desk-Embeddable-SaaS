@@ -122,6 +122,7 @@ export interface ClientWebsite {
   appointmentSettings: AppointmentSettings;
   enableSoundEffects: boolean;
   enableLeadCapture: boolean;
+  customCss?: string;
   createdAt: string;
 }
 

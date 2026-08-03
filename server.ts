@@ -252,7 +252,15 @@ Respond ONLY with valid JSON.`;
         faqItems: [
           { question: 'Do you accept insurance?', answer: 'Yes, we work with most major dental insurance providers!' },
           { question: 'How do I book an appointment?', answer: 'You can select a service and available time slot right here in the chat!' }
-        ]
+        ],
+        customCss: `.ai-frontdesk-launcher-cl_apex_dental {
+  background: linear-gradient(135deg, #0d9488, #00d2ff) !important;
+  border-radius: 50px !important;
+  padding: 12px 24px !important;
+  width: auto !important;
+  height: 50px !important;
+  font-weight: bold !important;
+}`
       },
       'cl_grandeur_hotel': {
         name: 'The Grandeur Hotel & Spa',
@@ -334,9 +342,10 @@ Respond ONLY with valid JSON.`;
 
   // API Route: Get Widget Configuration & Custom CSS for embed.js
   app.get('/api/widget-config', async (req: Request, res: Response) => {
-    // Allow cross-origin requests from any client website
+    // Enable CORS for client websites fetching widget config from embed.js
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
 
     const clientId = (req.query.clientId as string) || (req.query.client as string) || 'cl_apex_dental';
@@ -344,22 +353,12 @@ Respond ONLY with valid JSON.`;
     try {
       // Look up client config from database / helper
       const config = getClientConfigHelper(clientId);
-      const primaryColor = config?.primaryColor || '#007bff';
-
-      // Example response structure with saved/dynamic custom CSS for the launcher
-      const customCss = config?.customCss || `.ai-frontdesk-launcher-${clientId} {
-      background: linear-gradient(135deg, ${primaryColor}, #00d2ff) !important;
-      border-radius: 50px !important;
-      padding: 12px 24px !important;
-      width: auto !important;
-      height: 50px !important;
-      font-weight: bold !important;
-    }`;
+      const customCss = config?.customCss || '';
 
       res.json({
         success: true,
         clientId: clientId,
-        customCss: customCss || '' // Return saved custom CSS string
+        customCss: customCss
       });
     } catch (error) {
       res.status(500).json({ success: false, error: 'Config fetch failed' });

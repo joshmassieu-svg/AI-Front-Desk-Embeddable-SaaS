@@ -73,8 +73,8 @@ export const ClientEditorModal: React.FC<ClientEditorModalProps> = ({
 - **Location**: Downtown Office
 - **Services**: Consultations, Appointments, and General Support`
   );
-  const [unstructuredKnowledge, setUnstructuredKnowledge] = useState<string>(
-    client?.unstructuredKnowledge || ''
+  const [customCss, setCustomCss] = useState<string>(
+    client?.customCss || `.ai-frontdesk-launcher-${client?.id || 'cl_apex_dental'} {\n  background: linear-gradient(135deg, ${primaryColor}, #00d2ff) !important;\n  border-radius: 50px !important;\n  padding: 12px 24px !important;\n}`
   );
   const [knowledgeTab, setKnowledgeTab] = useState<'structured' | 'unstructured'>('structured');
 
@@ -206,6 +206,7 @@ export const ClientEditorModal: React.FC<ClientEditorModalProps> = ({
       },
       enableSoundEffects: true,
       enableLeadCapture: true,
+      customCss,
       createdAt: client?.createdAt || new Date().toISOString()
     };
 
@@ -480,6 +481,29 @@ export const ClientEditorModal: React.FC<ClientEditorModalProps> = ({
                   <option value="rounded-3xl">Extra Rounded (24px)</option>
                 </select>
               </div>
+            </div>
+
+            {/* Custom Launcher CSS Editor Input */}
+            <div className="pt-3 border-t border-slate-200/80 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <Code className="w-3.5 h-3.5 text-indigo-600" />
+                  Custom Launcher CSS Styles (Server A Dashboard Managed)
+                </label>
+                <span className="text-[10px] text-slate-500 font-mono">
+                  Target Class: .ai-frontdesk-launcher-{client?.id || 'cl_apex_dental'}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-600 leading-tight">
+                Input raw CSS rules targeting your widget launcher button. The embed script dynamically fetches and injects these styles into the host website page.
+              </p>
+              <textarea
+                value={customCss}
+                onChange={(e) => setCustomCss(e.target.value)}
+                rows={4}
+                className="w-full font-mono text-xs bg-slate-900 border border-slate-700 rounded-lg p-3 text-cyan-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed"
+                placeholder={`.ai-frontdesk-launcher-${client?.id || 'cl_apex_dental'} {\n  background: #007bff !important;\n  border-radius: 50% !important;\n}`}
+              />
             </div>
           </div>
 
