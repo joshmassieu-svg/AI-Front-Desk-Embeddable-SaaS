@@ -491,45 +491,45 @@ export const ApiService = {
   } {
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://aifrontdesk.ai';
 
-    const scriptTag = `<!-- AI Front Desk Widget (Sleek Host Button + Popup Chat Iframe) -->
+    const scriptTag = `<!-- AI Front Desk 100% Native Shadow DOM Widget (Zero Iframes) -->
 <script 
-  src="${baseUrl}/api/embed.js?client=${clientId}&position=${position}&v=3.0" 
+  src="${baseUrl}/api/embed.js?client=${clientId}&position=${position}&v=2.0" 
   data-client-id="${clientId}" 
   data-position="${position}" 
   async>
 </script>`;
 
-    const iframeSnippet = `<!-- AI Front Desk Widget (Sleek Host Button + Popup Chat Iframe) -->
+    const iframeSnippet = `<!-- AI Front Desk Native HTML / JS Embed (Zero Iframes) -->
 <div id="ai-frontdesk-popup-root-${clientId}"></div>
 <script>
   (function() {
     var s = document.createElement("script");
-    s.src = "${baseUrl}/api/embed.js?client=${clientId}&position=${position}&v=3.0";
+    s.src = "${baseUrl}/api/embed.js?client=${clientId}&position=${position}&v=2.0";
     s.async = true;
     document.head.appendChild(s);
   })();
 </script>`;
 
-    const reactSnippet = `// React / Next.js Component Embed (Sleek Host Button + Popup Chat Iframe)
+    const reactSnippet = `// React / Next.js Component Embed (100% Native DOM, Zero Iframes)
 import { useEffect } from 'react';
 
 export function AiFrontDeskWidget({ clientId = "${clientId}", position = "${position}" }) {
   useEffect(() => {
     const script = document.createElement("script");
-    script.src = "${baseUrl}/api/embed.js?client=" + clientId + "&position=" + position + "&v=3.0";
+    script.src = "${baseUrl}/api/embed.js?client=" + clientId + "&position=" + position + "&v=2.0";
     script.setAttribute("data-position", position);
     script.async = true;
     document.body.appendChild(script);
     return () => {
       if (script.parentNode) script.parentNode.removeChild(script);
-      const host = document.getElementById("ai-frontdesk-widget-root-" + clientId);
+      const host = document.getElementById("ai-frontdesk-shadow-host-" + clientId);
       if (host && host.parentNode) host.parentNode.removeChild(host);
     };
   }, [clientId, position]);
   return null;
 }`;
 
-    const wordpressShortcode = `[ai_frontdesk_embed client_id="${clientId}" position="${position}" v="3.0"]`;
+    const wordpressShortcode = `[ai_frontdesk_embed client_id="${clientId}" position="${position}" native="true"]`;
 
     return {
       scriptTag,

@@ -80,11 +80,11 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
               <div className="flex items-center gap-2">
                 <p className="font-semibold">Ready for production on any website</p>
                 <span className="bg-teal-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                  Sleek Button + Popup Iframe
+                  Zero-Iframe Native DOM
                 </span>
               </div>
               <p className="text-xs text-teal-800 mt-1">
-                Copy and paste this snippet into your client's HTML <code className="bg-teal-100 px-1 rounded-sm">&lt;head&gt;</code> or footer before the closing <code className="bg-teal-100 px-1 rounded-sm">&lt;/body&gt;</code> tag. Separates UI responsibilities: a sleek HTML button on the host page and an isolated popup iframe chat window that opens when clicked.
+                Copy and paste this snippet into your client's HTML <code className="bg-teal-100 px-1 rounded-sm">&lt;head&gt;</code> or footer before the closing <code className="bg-teal-100 px-1 rounded-sm">&lt;/body&gt;</code> tag. Renders 100% natively via Shadow DOM without layout shifts or iframe restrictions.
               </p>
             </div>
           </div>

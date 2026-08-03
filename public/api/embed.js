@@ -1,6 +1,7 @@
 /**
- * AI Front Desk Embed Loader
- * Place this script on any client website (Server B).
+ * AI Front Desk Embed Widget - Universal Standalone Javascript Loader
+ * Works seamlessly across Static CDN hosting (Vercel, Netlify, Cloudflare Pages, Nginx),
+ * Serverless Functions, and Node/Express servers.
  */
 (function() {
   // 1. Identify the current script tag that loaded this file
@@ -16,7 +17,7 @@
     }
   }
 
-  // 2. Determine Client ID
+  // 2. Determine Client ID from ?client=ID, ?clientId=ID, or data-client-id attribute
   var clientId = 'cl_apex_dental';
   var srcUrl = (scriptEl && scriptEl.src) || '';
   if (scriptEl && scriptEl.getAttribute('data-client-id')) {
@@ -29,7 +30,7 @@
     } catch(e) {}
   }
 
-  // 3. Determine Base URL of the AI Front Desk installation
+  // 3. Determine Base URL of the AI Front Desk installation automatically
   var baseUrl = window.location.origin;
   if (srcUrl && srcUrl.indexOf('http') === 0) {
     try {
@@ -38,7 +39,7 @@
     } catch(e) {}
   }
 
-  // 4. Prevent duplicate widget insertion
+  // 4. Prevent duplicate widget insertion on the same page
   var containerId = 'ai-frontdesk-container-' + clientId;
   if (document.getElementById(containerId)) return;
 
@@ -50,11 +51,8 @@
   container.style.right = '24px';
   container.style.zIndex = '999999';
   container.style.fontFamily = 'system-ui, -apple-system, sans-serif';
-  container.style.display = 'flex';
-  container.style.flexDirection = 'column';
-  container.style.alignItems = 'flex-end';
 
-  // 6. Create the Chat Window iframe (Hidden by default)
+  // 6. Create iframe widget insulated from host website styling
   var iframe = document.createElement('iframe');
   iframe.src = baseUrl + '/?embed=true&clientId=' + encodeURIComponent(clientId);
   iframe.style.border = 'none';
@@ -65,78 +63,15 @@
   iframe.style.maxWidth = '95vw';
   iframe.style.borderRadius = '20px';
   iframe.style.boxShadow = '0 20px 40px rgba(0,0,0,0.18)';
-  iframe.style.marginBottom = '16px';
+  iframe.style.transition = 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
   iframe.style.colorScheme = 'normal';
   iframe.allow = 'microphone; clipboard-write';
-  iframe.setAttribute('allowtransparency', 'true');
 
-  // HIDE IFRAME INITIALLY (Prevents the glassy rectangle!)
-  var isOpen = false;
-  iframe.style.display = 'none';
-  iframe.style.opacity = '0';
-  iframe.style.transform = 'translateY(12px)';
-  iframe.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
-
-  // 7. Create Native Launcher Button on Host Site
-  var button = document.createElement('button');
-  button.innerHTML = '💬'; // Default chat icon
-  button.style.width = '60px';
-  button.style.height = '60px';
-  button.style.borderRadius = '50%';
-  button.style.backgroundColor = '#007bff'; // Change to match brand accent
-  button.style.color = '#ffffff';
-  button.style.fontSize = '24px';
-  button.style.border = 'none';
-  button.style.cursor = 'pointer';
-  button.style.boxShadow = '0 8px 24px rgba(0,0,0,0.2)';
-  button.style.transition = 'transform 0.2s ease, background-color 0.2s ease';
-  button.style.display = 'flex';
-  button.style.alignItems = 'center';
-  button.style.justifyContent = 'center';
-
-  // Hover animations
-  button.onmouseenter = function() { button.style.transform = 'scale(1.06)'; };
-  button.onmouseleave = function() { button.style.transform = 'scale(1)'; };
-
-  // 8. Toggle Functionality
-  function toggleChat(show) {
-    isOpen = typeof show === 'boolean' ? show : !isOpen;
-    if (isOpen) {
-      iframe.style.display = 'block';
-      setTimeout(function() {
-        iframe.style.opacity = '1';
-        iframe.style.transform = 'translateY(0)';
-      }, 10);
-      button.innerHTML = '✕'; // Close icon
-    } else {
-      iframe.style.opacity = '0';
-      iframe.style.transform = 'translateY(12px)';
-      setTimeout(function() {
-        iframe.style.display = 'none';
-      }, 250);
-      button.innerHTML = '💬'; // Chat icon
-    }
-  }
-
-  button.onclick = function() { toggleChat(); };
-
-  // 9. Listen for messages from inside the iframe on Server A
-  // Inside Server A, run: window.parent.postMessage({ type: 'AI_FRONTDESK_CLOSE' }, '*')
-  window.addEventListener('message', function(event) {
-    if (event.origin !== baseUrl) return; // Security check
-
-    if (event.data && event.data.type === 'AI_FRONTDESK_CLOSE') {
-      toggleChat(false);
-    } else if (event.data && event.data.type === 'AI_FRONTDESK_OPEN') {
-      toggleChat(true);
-    }
-  });
-
-  // 10. Responsive Screen Sizing
+  // 7. Responsive mobile screen sizing
   function updateSize() {
     if (window.innerWidth < 480) {
       iframe.style.width = 'calc(100vw - 32px)';
-      iframe.style.height = 'calc(100vh - 110px)';
+      iframe.style.height = 'calc(100vh - 120px)';
       container.style.bottom = '16px';
       container.style.right = '16px';
     } else {
@@ -149,8 +84,6 @@
   window.addEventListener('resize', updateSize);
   updateSize();
 
-  // 11. Mount to DOM
   container.appendChild(iframe);
-  container.appendChild(button);
   document.body.appendChild(container);
 })();

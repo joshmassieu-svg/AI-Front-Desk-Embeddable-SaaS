@@ -38,7 +38,7 @@ async function startServer() {
     res.json({ status: 'ok', time: new Date().toISOString() });
   });
 
-  // API Route: Dynamic embed.js script generator for Client Websites (Separated UI Responsibilities)
+  // API Route: Dynamic embed.js script generator for Client Websites
   app.get(['/api/embed.js', '/embed.js'], (req: Request, res: Response) => {
     const clientId = (req.query.client as string) || 'cl_apex_dental';
     const position = (req.query.position as string) || 'bottom-right';
@@ -56,29 +56,28 @@ async function startServer() {
   var CLIENT_ID = "${clientId}";
   var BASE_URL = "${baseUrl}";
   var POSITION = "${position}";
-  var ROOT_ID = "ai-frontdesk-widget-root-" + CLIENT_ID;
-  if (document.getElementById(ROOT_ID)) return;
+  var EXISTING = document.getElementById("ai-frontdesk-shadow-host-" + CLIENT_ID);
+  if (EXISTING) return;
 
-  // 1. Create a container for our widget on the host website
-  var root = document.createElement("div");
-  root.id = ROOT_ID;
-  root.style.position = "fixed";
-  root.style.top = "0";
-  root.style.left = "0";
-  root.style.width = "0";
-  root.style.height = "0";
-  root.style.zIndex = "2147483647";
-  root.style.pointerEvents = "none";
-  document.body.appendChild(root);
+  // 1. Create Shadow DOM Host container (isolated from host website CSS)
+  var host = document.createElement("div");
+  host.id = "ai-frontdesk-shadow-host-" + CLIENT_ID;
+  host.style.position = "fixed";
+  host.style.top = "0";
+  host.style.left = "0";
+  host.style.width = "0";
+  host.style.height = "0";
+  host.style.zIndex = "2147483647";
+  host.style.pointerEvents = "none";
+  document.body.appendChild(host);
 
-  var shadow = root.attachShadow({ mode: "open" });
+  var shadow = host.attachShadow({ mode: "open" });
 
-  // 2. Insulated CSS inside Shadow DOM: Sleek Host Button + Hidden Chat Window Iframe
+  // 2. Insulated CSS inside Shadow DOM (no leakage in or out)
   var style = document.createElement("style");
   style.textContent = \`
     * { box-sizing: border-box; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; }
     
-    /* 1. Sleek Launcher Button pinned directly to the corner of user's screen */
     .afd-launcher-wrapper {
       pointer-events: auto;
       position: fixed;
@@ -91,7 +90,7 @@ async function startServer() {
     .afd-pos-bottom-left { left: 20px; right: auto; }
     .afd-pos-bottom-center { left: 50%; transform: translateX(-50%); right: auto; }
     
-    /* Sleek Pill Button Style */
+    /* Pill Button Style */
     .afd-btn-pill {
       background: #0d9488;
       color: #ffffff;
@@ -176,61 +175,177 @@ async function startServer() {
     }
     .afd-btn-circle:hover { transform: scale(1.08); }
 
-    .afd-status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #34d399;
-      border: 1.5px solid rgba(255, 255, 255, 0.8);
-      box-shadow: 0 0 8px #34d399;
-      display: inline-block;
-      flex-shrink: 0;
-    }
-
-    /* 2. The Iframe (Chat Window): Stays hidden until user clicks the bubble */
-    .afd-chat-iframe-wrapper {
-      visibility: hidden;
+    /* 100% Native Popup Modal Window (Zero Iframes) */
+    .afd-popup-modal {
+      display: none;
       opacity: 0;
-      pointer-events: none;
+      pointer-events: auto;
       position: fixed;
-      bottom: 86px;
+      bottom: 20px;
       width: 400px;
-      height: 620px;
-      max-height: calc(100vh - 110px);
+      height: 600px;
+      max-height: 85vh;
       max-width: calc(100vw - 32px);
       z-index: 2147483647;
+      background: #0f172a;
       border-radius: 20px;
       box-shadow: 0 25px 60px rgba(0, 0, 0, 0.45);
       overflow: hidden;
       border: 1px solid rgba(255, 255, 255, 0.15);
-      transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1), transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.28s;
-      transform: translateY(16px) scale(0.96);
-      transform-origin: bottom right;
-      background: #ffffff;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      transform: translateY(16px);
+      flex-direction: column;
     }
-    .afd-chat-iframe-wrapper.open {
-      visibility: visible;
+    .afd-popup-modal.open {
+      display: flex;
       opacity: 1;
-      pointer-events: auto;
-      transform: translateY(0) scale(1);
+      transform: translateY(0);
     }
-    .afd-pos-bottom-right.afd-chat-iframe-wrapper { right: 20px; left: auto; transform-origin: bottom right; }
-    .afd-pos-bottom-left.afd-chat-iframe-wrapper { left: 20px; right: auto; transform-origin: bottom left; }
-    .afd-pos-bottom-center.afd-chat-iframe-wrapper { left: 50%; transform: translateX(-50%) translateY(16px) scale(0.96); transform-origin: bottom center; }
-    .afd-pos-bottom-center.afd-chat-iframe-wrapper.open { transform: translateX(-50%) translateY(0) scale(1); }
+    .afd-pos-bottom-right.afd-popup-modal { right: 20px; left: auto; }
+    .afd-pos-bottom-left.afd-popup-modal { left: 20px; right: auto; }
+    .afd-pos-bottom-center.afd-popup-modal { left: 50%; transform: translateX(-50%); right: auto; }
+    .afd-pos-bottom-center.afd-popup-modal.open { transform: translateX(-50%) translateY(0); }
 
-    .afd-chat-iframe {
-      width: 100%;
-      height: 100%;
-      border: none;
+    .afd-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      background: #1e293b;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      color: #f8fafc;
+      flex-shrink: 0;
+    }
+    .afd-header-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .afd-status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+    }
+    .afd-header-title {
+      font-weight: 700;
+      font-size: 14px;
+      color: #f8fafc;
+    }
+    .afd-header-sub {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    .afd-modal-close {
       background: transparent;
-      display: block;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: 18px;
+      padding: 4px;
+      line-height: 1;
+    }
+    .afd-modal-close:hover { color: #fff; }
+
+    .afd-chat-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: #0f172a;
+    }
+    .afd-bubble-ai {
+      background: #1e293b;
+      color: #f8fafc;
+      padding: 12px 14px;
+      border-radius: 16px 16px 16px 4px;
+      font-size: 14px;
+      line-height: 1.5;
+      max-width: 85%;
+      align-self: flex-start;
+      border: 1px solid rgba(255,255,255,0.08);
+      word-break: break-word;
+    }
+    .afd-bubble-user {
+      background: #0d9488;
+      color: #ffffff;
+      padding: 12px 14px;
+      border-radius: 16px 16px 4px 16px;
+      font-size: 14px;
+      line-height: 1.5;
+      max-width: 85%;
+      align-self: flex-end;
+      word-break: break-word;
+    }
+    .afd-quick-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      padding: 0 16px 10px 16px;
+      flex-shrink: 0;
+    }
+    .afd-quick-pill {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #cbd5e1;
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .afd-quick-pill:hover {
+      background: #0d9488;
+      color: #ffffff;
+      border-color: #0d9488;
+    }
+    .afd-input-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: #1e293b;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      flex-shrink: 0;
+    }
+    .afd-input-field {
+      flex: 1;
+      background: #0f172a;
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #f8fafc;
+      padding: 10px 14px;
+      border-radius: 9999px;
+      font-size: 14px;
+      outline: none;
+    }
+    .afd-input-field:focus {
+      border-color: #0d9488;
+    }
+    .afd-send-btn {
+      background: #0d9488;
+      color: #ffffff;
+      border: none;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.15s ease;
+      flex-shrink: 0;
+    }
+    .afd-send-btn:hover {
+      transform: scale(1.06);
     }
 
     @media (max-width: 480px) {
-      .afd-chat-iframe-wrapper.open {
+      .afd-popup-modal.open {
         width: calc(100vw - 32px);
-        height: calc(100vh - 100px);
+        height: calc(100vh - 80px);
         bottom: 16px;
         right: 16px;
         border-radius: 16px;
@@ -239,61 +354,160 @@ async function startServer() {
   \`;
   shadow.appendChild(style);
 
-  // 3. Render The Loader Script's Sleek HTML <button> on Host Page
+  // 3. Render Launcher Button inside Shadow DOM
   var launcher = document.createElement("div");
   launcher.className = "afd-launcher-wrapper afd-pos-" + POSITION;
   launcher.innerHTML = \`
-    <div class="afd-btn-pill" id="afd-launcher-btn" role="button" aria-label="Open AI Assistant Chat">
+    <div class="afd-btn-pill" id="afd-launcher-btn">
       <div class="afd-icon-circle">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
         </svg>
       </div>
-      <span class="afd-status-dot"></span>
       <span id="afd-launcher-title">AI Assistant</span>
     </div>
   \`;
   shadow.appendChild(launcher);
 
-  // 4. Render The Iframe (Chat Window) - pops up right above the bubble button
-  var iframeWrapper = document.createElement("div");
-  iframeWrapper.className = "afd-chat-iframe-wrapper afd-pos-" + POSITION;
-  var iframeUrl = BASE_URL + "/?embed=true&clientId=" + encodeURIComponent(CLIENT_ID) + "&mode=embed_window";
-  iframeWrapper.innerHTML = \`
-    <iframe class="afd-chat-iframe" id="afd-iframe" src="\` + iframeUrl + \`" allow="microphone; clipboard-write; clipboard-read" title="AI Front Desk Chat Window"></iframe>
+  // 4. Render 100% Native Popup Modal Dialog inside Shadow DOM (ZERO IFRAMES)
+  var modal = document.createElement("div");
+  modal.className = "afd-popup-modal afd-pos-" + POSITION;
+  modal.innerHTML = \`
+    <div class="afd-modal-header">
+      <div class="afd-header-info">
+        <div class="afd-status-dot"></div>
+        <div>
+          <div class="afd-header-title" id="afd-title">AI Assistant</div>
+          <div class="afd-header-sub">Online • Instant Answers</div>
+        </div>
+      </div>
+      <button class="afd-modal-close" id="afd-close-btn" aria-label="Close">✕</button>
+    </div>
+    <div class="afd-chat-body" id="afd-chat-body"></div>
+    <div class="afd-quick-actions" id="afd-quick-actions"></div>
+    <form class="afd-input-bar" id="afd-input-form">
+      <input type="text" class="afd-input-field" id="afd-input-field" placeholder="Ask a question or book..." autocomplete="off" />
+      <button type="submit" class="afd-send-btn" aria-label="Send">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+      </button>
+    </form>
   \`;
-  shadow.appendChild(iframeWrapper);
+  shadow.appendChild(modal);
 
+  var chatBody = modal.querySelector("#afd-chat-body");
+  var quickActions = modal.querySelector("#afd-quick-actions");
+  var inputForm = modal.querySelector("#afd-input-form");
+  var inputField = modal.querySelector("#afd-input-field");
+  var closeBtn = modal.querySelector("#afd-close-btn");
   var launcherBtn = launcher.querySelector("#afd-launcher-btn");
-  var isOpen = false;
 
-  function toggleChat(open) {
-    isOpen = (typeof open === "boolean") ? open : !isOpen;
-    if (isOpen) {
-      iframeWrapper.classList.add("open");
-      launcher.classList.add("is-open");
-    } else {
-      iframeWrapper.classList.remove("open");
-      launcher.classList.remove("is-open");
-    }
-    var ifr = iframeWrapper.querySelector("#afd-iframe");
-    if (ifr && ifr.contentWindow) {
-      ifr.contentWindow.postMessage({ type: "AIFRONTDESK_TOGGLE_OPEN", isOpen: isOpen }, "*");
-    }
+  var chatHistory = [];
+  var isTyping = false;
+  var clientConfig = null;
+
+  function appendMessage(sender, text) {
+    var bubble = document.createElement("div");
+    bubble.className = sender === "user" ? "afd-bubble-user" : "afd-bubble-ai";
+    bubble.textContent = text;
+    chatBody.appendChild(bubble);
+    chatBody.scrollTop = chatBody.scrollHeight;
+    return bubble;
   }
 
-  function bindLauncherClick() {
-    if (launcherBtn) {
-      launcherBtn.addEventListener("click", function(e) {
-        e.stopPropagation();
-        toggleChat();
+  function renderQuickPills(pills) {
+    quickActions.innerHTML = "";
+    pills.forEach(function(label) {
+      var pill = document.createElement("button");
+      pill.type = "button";
+      pill.className = "afd-quick-pill";
+      pill.textContent = label;
+      pill.addEventListener("click", function() {
+        sendMessage(label);
       });
-    }
+      quickActions.appendChild(pill);
+    });
   }
-  bindLauncherClick();
 
+  function fetchClientConfig() {
+    fetch(BASE_URL + "/api/client-config?clientId=" + encodeURIComponent(CLIENT_ID))
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data && data.success && data.config) {
+          clientConfig = data.config;
+          if (clientConfig.name || clientConfig.personaName) {
+            modal.querySelector("#afd-title").textContent = clientConfig.personaName || "AI Assistant";
+            var launcherTitle = launcher.querySelector("#afd-launcher-title");
+            if (launcherTitle) launcherTitle.textContent = clientConfig.personaName || "AI Assistant";
+          }
+          if (clientConfig.primaryColor) {
+            if (launcherBtn) launcherBtn.style.background = clientConfig.primaryColor;
+          }
+          updateLauncher(
+            clientConfig.launcherStyle,
+            clientConfig.name || clientConfig.personaName,
+            clientConfig.primaryColor,
+            clientConfig.customLauncherCode
+          );
+          chatBody.innerHTML = "";
+          appendMessage("assistant", clientConfig.welcomeMessage || "Hello! How can I help you learn about our services or schedule an appointment today?");
+          renderQuickPills(["📅 Book Appointment", "💼 Services & Pricing", "📞 Request Callback"]);
+        }
+      })
+      .catch(function(err) {
+        if (chatBody.children.length === 0) {
+          appendMessage("assistant", "Hello! How can I help you learn about our services or schedule an appointment today?");
+          renderQuickPills(["📅 Book Appointment", "💼 Services & Pricing", "📞 Request Callback"]);
+        }
+      });
+  }
+
+  function sendMessage(text) {
+    if (!text || !text.trim() || isTyping) return;
+    var trimmed = text.trim();
+    appendMessage("user", trimmed);
+    inputField.value = "";
+    isTyping = true;
+
+    var typingBubble = document.createElement("div");
+    typingBubble.className = "afd-bubble-ai";
+    typingBubble.style.fontStyle = "italic";
+    typingBubble.style.opacity = "0.7";
+    typingBubble.textContent = "AI is typing...";
+    chatBody.appendChild(typingBubble);
+    chatBody.scrollTop = chatBody.scrollHeight;
+
+    fetch(BASE_URL + "/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clientId: CLIENT_ID,
+        userMessage: trimmed,
+        history: chatHistory,
+        clientConfig: clientConfig
+      })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (typingBubble && typingBubble.parentNode) typingBubble.parentNode.removeChild(typingBubble);
+      isTyping = false;
+      var replyText = data && data.message && data.message.text ? data.message.text : "I would be happy to help you! How else can I assist today?";
+      appendMessage("assistant", replyText);
+      chatHistory.push({ sender: "user", text: trimmed });
+      chatHistory.push({ sender: "assistant", text: replyText });
+    })
+    .catch(function(e) {
+      if (typingBubble && typingBubble.parentNode) typingBubble.parentNode.removeChild(typingBubble);
+      isTyping = false;
+      appendMessage("assistant", "I am here and ready to help! Could you please repeat your question?");
+    });
+  }
+
+  // Helper to dynamically update Launcher appearance based on client settings
   function updateLauncher(styleType, title, primaryColor, customCode) {
-    if (primaryColor && launcherBtn) {
+    if (primaryColor) {
       launcherBtn.style.background = primaryColor;
     }
     if (title && launcher.querySelector("#afd-launcher-title")) {
@@ -301,7 +515,7 @@ async function startServer() {
     }
     if (styleType === "ask_ai_bar") {
       launcher.innerHTML = \`
-        <div class="afd-btn-ask-ai-bar" id="afd-launcher-btn" role="button">
+        <div class="afd-btn-ask-ai-bar" id="afd-launcher-btn">
           <span style="color: #94a3b8;">Ask AI about \` + (title || "us") + \`...</span>
           <span class="afd-ai-badge">AI READY</span>
           <div class="afd-ask-btn" style="background: \` + (primaryColor || "#0d9488") + \`">Ask AI</div>
@@ -311,7 +525,7 @@ async function startServer() {
       bindLauncherClick();
     } else if (styleType === "circle" || styleType === "avatar") {
       launcher.innerHTML = \`
-        <div class="afd-btn-circle" id="afd-launcher-btn" role="button" style="background: \` + (primaryColor || "#0d9488") + \`">
+        <div class="afd-btn-circle" id="afd-launcher-btn" style="background: \` + (primaryColor || "#0d9488") + \`">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
           </svg>
@@ -326,45 +540,55 @@ async function startServer() {
     }
   }
 
-  // 5. Fetch Client Config to style the sleek button instantly
-  fetch(BASE_URL + "/api/client-config?clientId=" + encodeURIComponent(CLIENT_ID))
-    .then(function(res) { return res.json(); })
-    .then(function(data) {
-      if (data && data.success && data.config) {
-        var cfg = data.config;
-        updateLauncher(
-          cfg.launcherStyle,
-          cfg.name || cfg.personaName,
-          cfg.primaryColor,
-          cfg.customLauncherCode
-        );
-      }
-    })
-    .catch(function() {});
+  function toggleModal(open) {
+    if (open) {
+      modal.classList.add("open");
+      launcher.style.display = "none";
+      if (!clientConfig) fetchClientConfig();
+      setTimeout(function() { inputField.focus(); }, 100);
+    } else {
+      modal.classList.remove("open");
+      launcher.style.display = "block";
+    }
+  }
 
-  // Global Document Listener for custom trigger buttons on the customer's page
+  function bindLauncherClick() {
+    if (launcherBtn) {
+      launcherBtn.addEventListener("click", function() {
+        toggleModal(true);
+      });
+    }
+  }
+  bindLauncherClick();
+
+  // Global Document Listener for any client trigger (data-ai-frontdesk-open="true")
   document.addEventListener("click", function(e) {
     var trigger = e.target.closest('[data-ai-frontdesk-open="true"], .open-ai-frontdesk');
     if (trigger) {
       e.preventDefault();
-      toggleChat(true);
+      toggleModal(true);
     }
   });
 
-  // Listen for messages from inside the iframe (such as close button click or resize)
+  // Listen for Widget Messages (resize, close, style sync)
   window.addEventListener("message", function(e) {
     var data = e.data;
-    if (data && data.type === "AIFRONTDESK_CLOSE") {
-      toggleChat(false);
-    } else if (data && data.type === "AIFRONTDESK_RESIZE") {
+    if (data && data.type === "AIFRONTDESK_RESIZE") {
       if (data.launcherStyle || data.widgetTitle || data.primaryColor || data.customLauncherCode) {
         updateLauncher(data.launcherStyle, data.widgetTitle, data.primaryColor, data.customLauncherCode);
       }
-      if (typeof data.isOpen === "boolean") {
-        toggleChat(data.isOpen);
+      if (data.isOpen) {
+        modal.classList.add("open");
+        launcher.style.display = "none";
+      } else {
+        modal.classList.remove("open");
+        launcher.style.display = "block";
       }
     }
   });
+
+  // Load client config right away for launcher button style and welcome message
+  fetchClientConfig();
 })();
 `;
     res.send(scriptContent);
