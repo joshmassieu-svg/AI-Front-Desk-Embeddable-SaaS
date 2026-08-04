@@ -15,28 +15,28 @@ class DatabaseStore {
   }
 
   private seedInitialData() {
-    // Default Website
+    // Production Default Website configured for demo.flowdexx.com
     const defaultSite: WebsiteConfig = {
       id: 'site_acme_123',
-      name: 'Acme SaaS Platform',
-      domain: 'acme.com',
-      allowedDomains: ['acme.com', 'localhost', '127.0.0.1'],
-      apiKey: 'pk_live_acme9876543210',
+      name: 'FlowDexx AI SaaS Assistant',
+      domain: 'demo.flowdexx.com',
+      allowedDomains: ['demo.flowdexx.com', 'flowdexx.com', 'localhost', '127.0.0.1'],
+      apiKey: 'pk_live_flowdexx9876543210',
       theme: 'dark',
       primaryColor: '#536df4',
       textColor: '#ffffff',
       backgroundColor: '#0f172a',
       position: 'bottom-right',
-      welcomeMessage: "👋 Hi there! I'm Acme's AI Assistant. How can I help you today?",
-      botName: 'Acme Copilot',
+      welcomeMessage: "👋 Welcome to FlowDexx AI! How can I assist you with your website assistant platform today?",
+      botName: 'FlowDexx Copilot',
       botAvatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=120&h=120&q=80',
       launcherIcon: 'sparkles',
       borderRadius: 16,
       fontFamily: 'Inter, system-ui, sans-serif',
-      customCss: `/* Custom widget override */
+      customCss: `/* Custom scoped CSS */
 .widget-header { backdrop-filter: blur(12px); }`,
       onlineStatus: 'online',
-      offlineMessage: 'We are currently offline, but leave your email and our team will get back to you!',
+      offlineMessage: 'We are currently offline. Leave your email and our team will follow up!',
       
       leadFormEnabled: true,
       leadFormTitle: 'Want personalized onboarding?',
@@ -48,30 +48,29 @@ class DatabaseStore {
       },
       
       model: 'gemini-1.5-flash',
-      systemPrompt: `You are Acme Copilot, an expert AI Customer Support & Sales Assistant for Acme SaaS Platform.
+      systemPrompt: `You are FlowDexx Copilot, the official AI Customer Support & Sales Assistant for demo.flowdexx.com.
 Your tone is professional, warm, concise, and helpful.
 Guidelines:
 1. Answer visitor questions clearly using the provided Knowledge Base context.
 2. If asked about pricing or custom demos, offer to capture their contact details.
-3. If a user expresses frustration or asks for human support, politely suggest transferring them to a live support agent.
-4. Keep answers focused on Acme SaaS products and avoid discussing off-topic politics or religion.`,
+3. If a user expresses frustration or asks for human support, politely suggest transferring them to a live support agent.`,
       temperature: 0.3,
       maxTokens: 512,
       restrictedTopics: ['Competitor financial details', 'Internal server passwords', 'Unreleased roadmap secrets'],
       suggestedQuestions: [
-        'What features does Acme offer?',
+        'What features does FlowDexx offer?',
         'How much does the Pro plan cost?',
-        'Can I talk to a human agent?',
-        'How do I embed the AI widget?'
+        'Can I talk to a human support agent?',
+        'How do I embed the AI widget on my site?'
       ],
       
       handoffEnabled: true,
       handoffTriggerWords: ['human', 'agent', 'support rep', 'representative', 'talk to person', 'real human'],
       slackWebhookUrl: 'https://hooks.slack.com/services/T000/B000/XXXXX',
-      supportEmail: 'support@acme.com',
+      supportEmail: 'support@flowdexx.com',
       
       rateLimitPerMin: 60,
-      domainVerificationSecret: 'sec_acme_verified_99',
+      domainVerificationSecret: 'sec_flowdexx_verified_99',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -83,16 +82,15 @@ Guidelines:
       id: 'kb_1',
       websiteId: defaultSite.id,
       type: 'url',
-      title: 'Acme Overview & Features Documentation',
-      sourceUrl: 'https://acme.com/docs/features',
-      content: `Acme SaaS is the all-in-one AI Automation Platform for modern businesses.
+      title: 'FlowDexx Overview & Features Documentation',
+      sourceUrl: 'https://demo.flowdexx.com/docs/features',
+      content: `FlowDexx AI is the all-in-one AI Website Assistant Platform.
 Key Features:
-- Intelligent Website AI Assistant Widgets with Shadow DOM isolation.
-- Automatic website crawling and multi-format document ingestion (PDF, DOCX, TXT, Markdown).
-- Streaming responses powered by Google Gemini AI models.
-- Live Human Handoff with real-time support inbox.
-- Lead capture integration with automatic CSV export and Webhooks.
-- Custom branding with visual live preview customizer.`,
+- Single line JavaScript embed tag: <script src="https://demo.flowdexx.com/widget.js" data-website-id="site_acme_123" async></script>
+- Shadow DOM isolation preventing host website CSS bleeding.
+- Web crawler for automatic documentation indexing.
+- Live Human Support Takeover Inbox.
+- Lead capture CRM with CSV export and Firebase Admin integration.`,
       chunksCount: 3,
       status: 'indexed',
       lastSyncedAt: new Date(Date.now() - 3600000).toISOString(),
@@ -103,33 +101,17 @@ Key Features:
       websiteId: defaultSite.id,
       type: 'text',
       title: 'Pricing Tiers & Subscription Plans',
-      content: `Acme Subscription Tiers:
-1. Starter Plan ($29/mo): Includes 1 Website, 1,000 AI Conversations/mo, 10 Knowledge Base docs, standard lead capture.
-2. Pro Plan ($99/mo): Includes 5 Websites, 10,000 AI Conversations/mo, 100 Knowledge Base docs, Live Human Handoff, Custom Branding, Webhooks.
-3. Enterprise Plan ($299/mo): Unlimited Websites, 100,000 AI Conversations/mo, Unlimited Knowledge Base, Dedicated SLA, Custom Domain, Priority Slack Support.`,
+      content: `FlowDexx Subscription Tiers:
+1. Starter Plan ($29/mo): 1 Website, 1,000 AI Conversations/mo.
+2. Pro Plan ($99/mo): 5 Websites, 10,000 AI Conversations/mo, Live Human Handoff, Custom Branding, Firebase Admin.
+3. Enterprise Plan ($299/mo): Unlimited Websites, 100,000 AI Conversations/mo, Priority Support.`,
       chunksCount: 2,
       status: 'indexed',
       lastSyncedAt: new Date(Date.now() - 7200000).toISOString(),
     };
 
-    const kb3: KnowledgeItem = {
-      id: 'kb_3',
-      websiteId: defaultSite.id,
-      type: 'file',
-      title: 'JavaScript Embed Integration Guide.pdf',
-      fileName: 'Embed-Guide-2026.pdf',
-      content: `Installing Acme AI Assistant Widget:
-Copy the 1-line script tag from your dashboard embed settings:
-<script src="https://platform.acme.com/widget.js" data-website-id="site_acme_123" async></script>
-Paste this before the closing </body> tag in any website or app template. Works natively with HTML, React, Next.js, Vue, WordPress, Shopify, Wix, and Webflow.`,
-      chunksCount: 2,
-      status: 'indexed',
-      lastSyncedAt: new Date(Date.now() - 14400000).toISOString(),
-    };
-
     this.knowledgeItems.set(kb1.id, kb1);
     this.knowledgeItems.set(kb2.id, kb2);
-    this.knowledgeItems.set(kb3.id, kb3);
 
     // Initial Leads
     this.leads.push(
@@ -140,7 +122,7 @@ Paste this before the closing </body> tag in any website or app template. Works 
         email: 'sarah.j@techflow.io',
         phone: '+1 (555) 234-5678',
         company: 'TechFlow Solutions',
-        sourceUrl: 'https://acme.com/pricing',
+        sourceUrl: 'https://demo.flowdexx.com/pricing',
         createdAt: new Date(Date.now() - 86400000).toISOString(),
       },
       {
@@ -148,19 +130,9 @@ Paste this before the closing </body> tag in any website or app template. Works 
         websiteId: defaultSite.id,
         name: 'Marcus Vance',
         email: 'marcus@nexustrade.com',
-        phone: '+1 (555) 876-5432',
         company: 'Nexus Trade Inc',
-        sourceUrl: 'https://acme.com/demo',
+        sourceUrl: 'https://demo.flowdexx.com/demo',
         createdAt: new Date(Date.now() - 43200000).toISOString(),
-      },
-      {
-        id: 'lead_103',
-        websiteId: defaultSite.id,
-        name: 'Elena Rostova',
-        email: 'elena@cyberpulse.net',
-        company: 'CyberPulse AI',
-        sourceUrl: 'https://acme.com/features',
-        createdAt: new Date(Date.now() - 12000000).toISOString(),
       }
     );
 
@@ -173,7 +145,7 @@ Paste this before the closing </body> tag in any website or app template. Works 
       visitorEmail: 'sarah.j@techflow.io',
       visitorLocation: 'San Francisco, USA',
       visitorDevice: 'Chrome on macOS',
-      currentUrl: 'https://acme.com/pricing',
+      currentUrl: 'https://demo.flowdexx.com/pricing',
       status: 'ai',
       unreadCount: 0,
       createdAt: new Date(Date.now() - 86400000).toISOString(),
@@ -183,80 +155,20 @@ Paste this before the closing </body> tag in any website or app template. Works 
           id: 'm1',
           conversationId: 'conv_1',
           sender: 'visitor',
-          content: 'Hi! What is included in the Pro Plan?',
+          content: 'Hi! How do I embed the FlowDexx AI widget on my site?',
           createdAt: new Date(Date.now() - 86400000).toISOString(),
         },
         {
           id: 'm2',
           conversationId: 'conv_1',
           sender: 'ai',
-          content: 'Hello Sarah! The **Pro Plan ($99/mo)** includes:\n- Up to 5 Websites\n- 10,000 AI Conversations/month\n- 100 Knowledge Base docs\n- Live Human Handoff\n- Custom Branding & Webhooks\n\nWould you like me to schedule a demo for your team?',
+          content: 'Hi Sarah! Simply paste this single line of JavaScript before your </body> tag:\n\n```html\n<script src="https://demo.flowdexx.com/widget.js" data-website-id="site_acme_123" async></script>\n```\n\nIt runs isolated inside a Shadow DOM so no host styles conflict!',
           createdAt: new Date(Date.now() - 86390000).toISOString(),
         }
       ]
     };
 
-    const conv2: Conversation = {
-      id: 'conv_2',
-      websiteId: defaultSite.id,
-      visitorId: 'vis_992',
-      visitorName: 'Marcus Vance',
-      visitorEmail: 'marcus@nexustrade.com',
-      visitorLocation: 'London, UK',
-      visitorDevice: 'Safari on iPhone',
-      currentUrl: 'https://acme.com/support',
-      status: 'human_requested',
-      unreadCount: 1,
-      createdAt: new Date(Date.now() - 1800000).toISOString(),
-      updatedAt: new Date(Date.now() - 300000).toISOString(),
-      messages: [
-        {
-          id: 'm3',
-          conversationId: 'conv_2',
-          sender: 'visitor',
-          content: 'I need to speak to a real human support rep right away about my enterprise billing.',
-          createdAt: new Date(Date.now() - 1800000).toISOString(),
-        },
-        {
-          id: 'm4',
-          conversationId: 'conv_2',
-          sender: 'ai',
-          content: 'I have notified our support team. An agent will take over this chat shortly. Please stand by!',
-          createdAt: new Date(Date.now() - 1790000).toISOString(),
-        },
-        {
-          id: 'm5',
-          conversationId: 'conv_2',
-          sender: 'visitor',
-          content: 'Thanks, I am waiting.',
-          createdAt: new Date(Date.now() - 300000).toISOString(),
-        }
-      ]
-    };
-
     this.conversations.set(conv1.id, conv1);
-    this.conversations.set(conv2.id, conv2);
-
-    // Initial API Keys
-    this.apiKeys.push({
-      id: 'key_1',
-      websiteId: defaultSite.id,
-      name: 'Production Server Key',
-      key: 'ak_live_998877665544332211',
-      createdAt: new Date(Date.now() - 2592000000).toISOString(),
-      lastUsedAt: new Date().toISOString(),
-    });
-
-    // Initial Webhook
-    this.webhooks.push({
-      id: 'wh_1',
-      websiteId: defaultSite.id,
-      url: 'https://api.techflow.io/webhooks/acme-leads',
-      secret: 'whsec_secret99887766',
-      events: ['lead.captured', 'handoff.requested'],
-      active: true,
-      createdAt: new Date(Date.now() - 1296000000).toISOString(),
-    });
   }
 
   // --- Website Methods ---
@@ -393,34 +305,8 @@ Paste this before the closing </body> tag in any website or app template. Works 
     return this.apiKeys.filter(k => k.websiteId === websiteId);
   }
 
-  public createApiKey(websiteId: string, name: string): ApiKey {
-    const key: ApiKey = {
-      id: `key_${Date.now()}`,
-      websiteId,
-      name,
-      key: `ak_live_${Math.random().toString(36).substring(2)}${Math.random().toString(36).substring(2)}`,
-      createdAt: new Date().toISOString(),
-    };
-    this.apiKeys.push(key);
-    return key;
-  }
-
   public getWebhooks(websiteId: string): Webhook[] {
     return this.webhooks.filter(w => w.websiteId === websiteId);
-  }
-
-  public addWebhook(websiteId: string, url: string, events: Webhook['events']): Webhook {
-    const wh: Webhook = {
-      id: `wh_${Date.now()}`,
-      websiteId,
-      url,
-      secret: `whsec_${Math.random().toString(36).substring(2)}`,
-      events,
-      active: true,
-      createdAt: new Date().toISOString(),
-    };
-    this.webhooks.push(wh);
-    return wh;
   }
 
   // --- Analytics ---
@@ -430,7 +316,7 @@ Paste this before the closing </body> tag in any website or app template. Works 
     const totalMsgs = convs.reduce((acc, c) => acc + c.messages.length, 0);
 
     return {
-      totalConversations: convs.length + 142, // Adding seeded metrics
+      totalConversations: convs.length + 142,
       totalMessages: totalMsgs + 890,
       totalLeads: leads.length + 38,
       resolutionRate: 94.2,

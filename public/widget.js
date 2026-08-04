@@ -16,7 +16,7 @@
   var websiteId = currentScript ? (currentScript.getAttribute('data-website-id') || currentScript.getAttribute('data-site-id')) : 'site_acme_123';
   if (!websiteId) websiteId = 'site_acme_123';
 
-  // Base API origin (uses host origin or default local dev server)
+  // Production snippet domain: demo.flowdexx.com
   var apiOrigin = (function() {
     if (currentScript && currentScript.src) {
       try {
@@ -24,7 +24,7 @@
         return u.origin;
       } catch (e) {}
     }
-    return window.location.origin;
+    return window.location.origin.indexOf('localhost') !== -1 ? window.location.origin : 'https://demo.flowdexx.com';
   })();
 
   // State
@@ -524,7 +524,7 @@
         </div>
 
         <div class="branding-footer">
-          Powered by <a href="#" target="_blank">Acme AI Assistant</a>
+          Powered by <a href="https://demo.flowdexx.com" target="_blank">FlowDexx AI</a>
         </div>
       </div>
 
