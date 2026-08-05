@@ -76,7 +76,7 @@
       *, *:before, *:after { box-sizing: border-box; margin: 0; padding: 0; }
 
       .widget-wrapper {
-        pointer-events: auto;
+        pointer-events: none;
         position: fixed;
         bottom: 20px;
         ${isLeft ? 'left: 20px;' : 'right: 20px;'}
@@ -86,6 +86,7 @@
       }
 
       .launcher-btn {
+        pointer-events: auto;
         width: 60px;
         height: 60px;
         border-radius: 50%;
