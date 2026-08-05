@@ -32,15 +32,14 @@
   var iframeContainer = null;
   var iframeEl = null;
 
-  // Fetch initial config for primary color
-  var primaryColor = '#536df4';
-  fetch(apiOrigin + '/api/v1/widget/config?siteId=' + websiteId)
-    .then(function (res) { return res.json(); })
-    .then(function (cfg) {
-      if (cfg && cfg.primaryColor) primaryColor = cfg.primaryColor;
-      if (launcherBtn) launcherBtn.style.backgroundColor = primaryColor;
-    })
-    .catch(function () {});
+  // Default launcher config
+  var config = {
+    primaryColor: '#536df4',
+    position: 'bottom-right',
+    launcherStyle: 'bar',
+    launcherText: 'Ask AI anything...',
+    launcherPlaceholder: 'Type a question...',
+  };
 
   // Host container setup
   var hostElement = document.createElement('div');
@@ -54,71 +53,194 @@
 
   var shadow = hostElement.attachShadow({ mode: 'open' });
 
-  // Add styles for launcher button & iframe container inside Shadow DOM
-  var styleTag = document.createElement('style');
-  styleTag.textContent = `
-    *, *:before, *:after { box-sizing: border-box; margin: 0; padding: 0; }
-    .widget-wrapper {
-      pointer-events: none;
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
+  function getPositionCss(pos) {
+    if (pos === 'bottom-left') {
+      return 'bottom: 20px; left: 20px; align-items: flex-start;';
     }
-    .launcher-btn {
-      pointer-events: auto;
-      width: 60px;
-      height: 60px;
-      border-radius: 50%;
-      background: ${primaryColor};
-      color: #ffffff;
-      border: none;
-      cursor: pointer;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.25), 0 0 20px rgba(83,109,244,0.4);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease;
+    if (pos === 'bottom-center') {
+      return 'bottom: 20px; left: 50%; transform: translateX(-50%); align-items: center;';
     }
-    .launcher-btn:hover {
-      transform: scale(1.08);
-      box-shadow: 0 12px 30px rgba(0,0,0,0.35), 0 0 30px rgba(83,109,244,0.7);
-    }
-    .launcher-btn svg {
-      width: 28px;
-      height: 28px;
-    }
-    .iframe-wrapper {
-      width: 380px;
-      height: 600px;
-      max-height: calc(100vh - 100px);
-      margin-bottom: 16px;
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.35);
-      border: 1px solid rgba(255,255,255,0.1);
-      display: none;
-      pointer-events: auto;
-      transition: opacity 0.25s ease;
-    }
-    .iframe-wrapper.open {
-      display: block;
-    }
-    .iframe-element {
-      width: 100%;
-      height: 100%;
-      border: none;
-    }
-    @media (max-width: 480px) {
-      .iframe-wrapper {
-        width: calc(100vw - 32px);
-        height: calc(100vh - 100px);
-        right: 16px;
+    return 'bottom: 20px; right: 20px; align-items: flex-end;';
+  }
+
+  function getStyles(cfg) {
+    var primary = cfg.primaryColor || '#536df4';
+    var posCss = getPositionCss(cfg.position || 'bottom-right');
+
+    return `
+      *, *:before, *:after { box-sizing: border-box; margin: 0; padding: 0; }
+      :host {
+        font-family: Inter, system-ui, sans-serif;
       }
-    }
-  `;
+      .widget-wrapper {
+        pointer-events: none;
+        position: fixed;
+        ${posCss}
+        display: flex;
+        flex-direction: column;
+      }
+      .launcher-container {
+        pointer-events: auto;
+        display: flex;
+        align-items: center;
+      }
+
+      /* Variant: Circle */
+      .launcher-circle {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: ${primary};
+        color: #ffffff;
+        border: none;
+        cursor: pointer;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.3), 0 0 20px ${primary}66;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease;
+      }
+      .launcher-circle:hover {
+        transform: scale(1.08);
+        box-shadow: 0 12px 30px rgba(0,0,0,0.4), 0 0 30px ${primary}aa;
+      }
+      .launcher-circle svg {
+        width: 28px;
+        height: 28px;
+      }
+
+      /* Variant: Pill */
+      .launcher-pill {
+        height: 50px;
+        padding: 0 20px;
+        border-radius: 25px;
+        background: ${primary};
+        color: #ffffff;
+        border: none;
+        cursor: pointer;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.3), 0 0 20px ${primary}66;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
+      }
+      .launcher-pill:hover {
+        transform: scale(1.05);
+        box-shadow: 0 12px 30px rgba(0,0,0,0.4), 0 0 30px ${primary}aa;
+      }
+      .launcher-pill svg {
+        width: 20px;
+        height: 20px;
+      }
+
+      /* Variant: Ask AI Input Bar */
+      .launcher-bar {
+        height: 52px;
+        width: 320px;
+        max-width: calc(100vw - 40px);
+        border-radius: 26px;
+        background: #0f172a;
+        border: 1px solid rgba(255,255,255,0.15);
+        box-shadow: 0 12px 32px rgba(0,0,0,0.45), 0 0 20px ${primary}44;
+        display: flex;
+        align-items: center;
+        padding: 4px 6px 4px 16px;
+        gap: 8px;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+      .launcher-bar:focus-within {
+        border-color: ${primary};
+        box-shadow: 0 12px 36px rgba(0,0,0,0.5), 0 0 25px ${primary}88;
+      }
+      .launcher-bar svg.icon-sparkle {
+        width: 20px;
+        height: 20px;
+        color: ${primary};
+        flex-shrink: 0;
+      }
+      .launcher-bar input {
+        flex: 1;
+        background: transparent;
+        border: none;
+        color: #f8fafc;
+        font-size: 13px;
+        outline: none;
+      }
+      .launcher-bar input::placeholder {
+        color: #94a3b8;
+      }
+      .launcher-bar button.bar-submit-btn {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: ${primary};
+        color: #ffffff;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        transition: transform 0.15s ease;
+      }
+      .launcher-bar button.bar-submit-btn:hover {
+        transform: scale(1.08);
+      }
+      .launcher-bar button.bar-submit-btn svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      /* Variant: Tab */
+      .launcher-tab {
+        height: 44px;
+        padding: 0 16px;
+        border-radius: 12px 12px 0 0;
+        background: ${primary};
+        color: #ffffff;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        box-shadow: 0 -4px 16px rgba(0,0,0,0.25);
+      }
+
+      .iframe-wrapper {
+        width: 380px;
+        height: 600px;
+        max-height: calc(100vh - 100px);
+        margin-bottom: 16px;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.35);
+        border: 1px solid rgba(255,255,255,0.1);
+        display: none;
+        pointer-events: auto;
+        transition: opacity 0.25s ease;
+      }
+      .iframe-wrapper.open {
+        display: block;
+      }
+      .iframe-element {
+        width: 100%;
+        height: 100%;
+        border: none;
+      }
+      @media (max-width: 480px) {
+        .iframe-wrapper {
+          width: calc(100vw - 32px);
+          height: calc(100vh - 100px);
+        }
+      }
+    `;
+  }
+
+  var styleTag = document.createElement('style');
   shadow.appendChild(styleTag);
 
   var wrapper = document.createElement('div');
@@ -127,58 +249,140 @@
   iframeContainer = document.createElement('div');
   iframeContainer.className = 'iframe-wrapper';
 
-  var launcherBtn = document.createElement('button');
-  launcherBtn.className = 'launcher-btn';
-  launcherBtn.title = 'Open AI Chat';
-  launcherBtn.innerHTML = `
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
-    </svg>
-  `;
+  var launcherContainer = document.createElement('div');
+  launcherContainer.className = 'launcher-container';
 
   wrapper.appendChild(iframeContainer);
-  wrapper.appendChild(launcherBtn);
+  wrapper.appendChild(launcherContainer);
   shadow.appendChild(wrapper);
 
-  var closeSvg = `
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <line x1="18" y1="6" x2="6" y2="18"></line>
-      <line x1="6" y1="6" x2="18" y2="18"></line>
-    </svg>
-  `;
-  var sparkSvg = `
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
-    </svg>
-  `;
-
-  // Handle launcher button click
-  launcherBtn.onclick = function () {
+  function createIframe(initialQuery) {
     if (!iframeCreated) {
-      // Create iframe ONLY when the launcher button is clicked for the first time
       iframeEl = document.createElement('iframe');
       iframeEl.className = 'iframe-element';
-      iframeEl.src = apiOrigin + '/widget-frame?siteId=' + encodeURIComponent(websiteId);
+      var src = apiOrigin + '/widget-frame?siteId=' + encodeURIComponent(websiteId);
+      if (initialQuery) {
+        src += '&initialQuery=' + encodeURIComponent(initialQuery);
+      }
+      iframeEl.src = src;
       iframeContainer.appendChild(iframeEl);
       iframeCreated = true;
     }
+  }
 
-    isOpen = !isOpen;
+  function openWidget(initialQuery) {
+    createIframe(initialQuery);
+    isOpen = true;
+    iframeContainer.classList.add('open');
+    renderLauncher();
+  }
+
+  function closeWidget() {
+    isOpen = false;
+    iframeContainer.classList.remove('open');
+    renderLauncher();
+  }
+
+  function renderLauncher() {
+    styleTag.textContent = getStyles(config);
+
+    var closeSvg = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    `;
+    var sparkSvg = `
+      <svg class="icon-sparkle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+      </svg>
+    `;
+    var sendSvg = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"></line>
+        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+      </svg>
+    `;
+
     if (isOpen) {
-      iframeContainer.classList.add('open');
-      launcherBtn.innerHTML = closeSvg;
-    } else {
-      iframeContainer.classList.remove('open');
-      launcherBtn.innerHTML = sparkSvg;
+      launcherContainer.innerHTML = `
+        <button class="launcher-circle" id="btn-close-launcher">
+          ${closeSvg}
+        </button>
+      `;
+      launcherContainer.querySelector('#btn-close-launcher').onclick = closeWidget;
+      return;
     }
-  };
+
+    var styleVariant = config.launcherStyle || 'bar';
+
+    if (styleVariant === 'pill') {
+      launcherContainer.innerHTML = `
+        <button class="launcher-pill" id="btn-open-launcher">
+          ${sparkSvg}
+          <span>${config.launcherText || 'Ask AI'}</span>
+        </button>
+      `;
+      launcherContainer.querySelector('#btn-open-launcher').onclick = function () { openWidget(); };
+    } else if (styleVariant === 'tab') {
+      launcherContainer.innerHTML = `
+        <button class="launcher-tab" id="btn-open-launcher">
+          ${sparkSvg}
+          <span>${config.launcherText || 'Need Help?'}</span>
+        </button>
+      `;
+      launcherContainer.querySelector('#btn-open-launcher').onclick = function () { openWidget(); };
+    } else if (styleVariant === 'bar') {
+      launcherContainer.innerHTML = `
+        <div class="launcher-bar">
+          ${sparkSvg}
+          <input type="text" id="bar-input-field" placeholder="${config.launcherPlaceholder || 'Ask AI anything...'}" />
+          <button class="bar-submit-btn" id="btn-bar-submit">
+            ${sendSvg}
+          </button>
+        </div>
+      `;
+
+      var inputEl = launcherContainer.querySelector('#bar-input-field');
+      var submitBtn = launcherContainer.querySelector('#btn-bar-submit');
+
+      var triggerFromBar = function () {
+        var query = inputEl.value ? inputEl.value.trim() : '';
+        openWidget(query);
+      };
+
+      submitBtn.onclick = triggerFromBar;
+      inputEl.onkeydown = function (e) {
+        if (e.key === 'Enter') triggerFromBar();
+      };
+    } else {
+      // Default: Circle
+      launcherContainer.innerHTML = `
+        <button class="launcher-circle" id="btn-open-launcher">
+          ${sparkSvg}
+        </button>
+      `;
+      launcherContainer.querySelector('#btn-open-launcher').onclick = function () { openWidget(); };
+    }
+  }
+
+  // Fetch website config
+  fetch(apiOrigin + '/api/v1/widget/config?siteId=' + websiteId)
+    .then(function (res) { return res.json(); })
+    .then(function (cfg) {
+      if (cfg) {
+        config = Object.assign(config, cfg);
+      }
+      renderLauncher();
+    })
+    .catch(function () {
+      renderLauncher();
+    });
 
   // Listen for close postMessage from iframe
   window.addEventListener('message', function (event) {
     if (event.data && event.data.type === 'ai-widget-close') {
-      isOpen = false;
-      iframeContainer.classList.remove('open');
-      launcherBtn.innerHTML = sparkSvg;
+      closeWidget();
     }
   });
 })();

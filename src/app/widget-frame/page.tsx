@@ -44,6 +44,9 @@ function WidgetFrameContent() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const initialQuery = searchParams.get('initialQuery');
+  const initialQueryProcessed = useRef(false);
+
   // Initialize Visitor ID and fetch config
   useEffect(() => {
     let vid = localStorage.getItem('ai_widget_visitor_id');
@@ -63,14 +66,20 @@ function WidgetFrameContent() {
       .then((res) => res.json())
       .then((data: WebsiteConfig) => {
         setConfig(data);
-        setMessages([
-          {
-            id: 'welcome',
-            sender: 'ai',
-            content: data.welcomeMessage || "👋 Hi there! How can I help you today?",
-            createdAt: new Date().toISOString(),
-          },
-        ]);
+        const welcomeMsg: Message = {
+          id: 'welcome',
+          sender: 'ai',
+          content: data.welcomeMessage || "👋 Hi there! How can I help you today?",
+          createdAt: new Date().toISOString(),
+        };
+        setMessages([welcomeMsg]);
+
+        if (initialQuery && !initialQueryProcessed.current) {
+          initialQueryProcessed.current = true;
+          setTimeout(() => {
+            handleSend(initialQuery);
+          }, 300);
+        }
       })
       .catch((err) => console.error('Failed to load widget config:', err));
   }, [siteId]);

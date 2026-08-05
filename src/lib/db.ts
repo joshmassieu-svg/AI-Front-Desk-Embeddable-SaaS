@@ -31,6 +31,9 @@ class DatabaseStore {
       botName: 'FlowDexx Copilot',
       botAvatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=120&h=120&q=80',
       launcherIcon: 'sparkles',
+      launcherStyle: 'bar',
+      launcherText: 'Ask AI anything...',
+      launcherPlaceholder: 'Type your question...',
       borderRadius: 16,
       fontFamily: 'Inter, system-ui, sans-serif',
       customCss: `/* Custom scoped CSS */

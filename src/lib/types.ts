@@ -8,11 +8,14 @@ export interface WebsiteConfig {
   primaryColor: string;
   textColor: string;
   backgroundColor: string;
-  position: 'bottom-right' | 'bottom-left';
+  position: 'bottom-right' | 'bottom-left' | 'bottom-center';
   welcomeMessage: string;
   botName: string;
   botAvatar: string;
   launcherIcon: 'chat' | 'sparkles' | 'message' | 'headset';
+  launcherStyle?: 'circle' | 'pill' | 'bar' | 'tab';
+  launcherText?: string;
+  launcherPlaceholder?: string;
   borderRadius: number; // px
   fontFamily: string;
   customCss?: string;
