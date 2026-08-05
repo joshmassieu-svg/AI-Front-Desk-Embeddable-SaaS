@@ -51,18 +51,21 @@
 
   var shadow = hostElement.attachShadow({ mode: 'open' });
 
+  // FIXED CENTERING: 100vw container eliminates transform offsets
   function updateHostPosition(pos) {
     hostElement.style.top = '';
     hostElement.style.bottom = '20px';
     hostElement.style.left = '';
     hostElement.style.right = '';
     hostElement.style.transform = '';
+    hostElement.style.width = 'auto';
 
     if (pos === 'bottom-left') {
       hostElement.style.left = '20px';
     } else if (pos === 'bottom-center') {
-      hostElement.style.left = '50%';
-      hostElement.style.transform = 'translateX(-50%)';
+      hostElement.style.left = '0';
+      hostElement.style.right = '0';
+      hostElement.style.width = '100vw';
     } else {
       hostElement.style.right = '20px';
     }
@@ -70,16 +73,31 @@
 
   function getPositionCss(pos) {
     if (pos === 'bottom-left') {
-      return 'bottom: 0; left: 0; align-items: flex-start;';
+      return 'align-items: flex-start; width: auto;';
     }
     if (pos === 'bottom-center') {
-      return 'bottom: 0; left: 0; align-items: center;';
+      return 'align-items: center; width: 100%;';
     }
-    return 'bottom: 0; right: 0; align-items: flex-end;';
+    return 'align-items: flex-end; width: auto;';
+  }
+
+  function hexToRgba(hex, alpha) {
+    if (!hex || typeof hex !== 'string') return `rgba(83, 109, 244, ${alpha})`;
+    var cleanHex = hex.replace('#', '');
+    if (cleanHex.length === 3) {
+      cleanHex = cleanHex.split('').map(function (c) { return c + c; }).join('');
+    }
+    if (cleanHex.length === 6) {
+      var num = parseInt(cleanHex, 16);
+      return `rgba(${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255}, ${alpha})`;
+    }
+    return hex;
   }
 
   function getStyles(cfg) {
     var primary = cfg.primaryColor || '#536df4';
+    var shadowGlow = hexToRgba(primary, 0.4);
+    var shadowGlowStrong = hexToRgba(primary, 0.67);
     var posCss = getPositionCss(cfg.position || 'bottom-right');
 
     return `
@@ -89,7 +107,7 @@
       }
       .widget-wrapper {
         pointer-events: none;
-        position: fixed;
+        position: relative;
         ${posCss}
         display: flex;
         flex-direction: column;
@@ -98,6 +116,7 @@
         pointer-events: auto;
         display: flex;
         align-items: center;
+        justify-content: center;
       }
 
       /* Variant: Circle */
@@ -109,7 +128,7 @@
         color: #ffffff;
         border: none;
         cursor: pointer;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.3), 0 0 20px ${primary}66;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.3), 0 0 20px ${shadowGlow};
         display: flex;
         align-items: center;
         justify-content: center;
@@ -117,7 +136,7 @@
       }
       .launcher-circle:hover {
         transform: scale(1.08);
-        box-shadow: 0 12px 30px rgba(0,0,0,0.4), 0 0 30px ${primary}aa;
+        box-shadow: 0 12px 30px rgba(0,0,0,0.4), 0 0 30px ${shadowGlowStrong};
       }
       .launcher-circle svg {
         width: 28px;
@@ -133,7 +152,7 @@
         color: #ffffff;
         border: none;
         cursor: pointer;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.3), 0 0 20px ${primary}66;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.3), 0 0 20px ${shadowGlow};
         display: flex;
         align-items: center;
         gap: 10px;
@@ -143,7 +162,7 @@
       }
       .launcher-pill:hover {
         transform: scale(1.05);
-        box-shadow: 0 12px 30px rgba(0,0,0,0.4), 0 0 30px ${primary}aa;
+        box-shadow: 0 12px 30px rgba(0,0,0,0.4), 0 0 30px ${shadowGlowStrong};
       }
       .launcher-pill svg {
         width: 20px;
@@ -158,7 +177,7 @@
         border-radius: 26px;
         background: #0f172a;
         border: 1px solid rgba(255,255,255,0.15);
-        box-shadow: 0 12px 32px rgba(0,0,0,0.45), 0 0 20px ${primary}44;
+        box-shadow: 0 12px 32px rgba(0,0,0,0.45), 0 0 20px ${shadowGlow};
         display: flex;
         align-items: center;
         padding: 4px 6px 4px 16px;
@@ -167,7 +186,7 @@
       }
       .launcher-bar:focus-within {
         border-color: ${primary};
-        box-shadow: 0 12px 36px rgba(0,0,0,0.5), 0 0 25px ${primary}88;
+        box-shadow: 0 12px 36px rgba(0,0,0,0.5), 0 0 25px ${shadowGlowStrong};
       }
       .launcher-bar svg.icon-sparkle {
         width: 20px;
@@ -282,6 +301,8 @@
       iframeEl.src = src;
       iframeContainer.appendChild(iframeEl);
       iframeCreated = true;
+    } else if (initialQuery && iframeEl && iframeEl.contentWindow) {
+      iframeEl.contentWindow.postMessage({ type: 'ai-widget-query', query: initialQuery }, '*');
     }
   }
 
@@ -330,7 +351,7 @@
       return;
     }
 
-    var styleVariant = config.launcherStyle || 'bar';
+    var styleVariant = (config.launcherStyle || 'bar').toLowerCase();
 
     if (styleVariant === 'pill') {
       launcherContainer.innerHTML = `
@@ -372,7 +393,6 @@
         if (e.key === 'Enter') triggerFromBar();
       };
     } else {
-      // Default: Circle
       launcherContainer.innerHTML = `
         <button class="launcher-circle" id="btn-open-launcher">
           ${sparkSvg}
@@ -382,12 +402,16 @@
     }
   }
 
-  // Fetch website config
-  fetch(apiOrigin + '/api/v1/widget/config?siteId=' + websiteId)
+  fetch(apiOrigin + '/api/v1/widget/config?siteId=' + encodeURIComponent(websiteId) + '&t=' + Date.now())
     .then(function (res) { return res.json(); })
-    .then(function (cfg) {
-      if (cfg) {
-        config = Object.assign(config, cfg);
+    .then(function (res) {
+      var fetchedConfig = res && (res.data || res.config || res);
+      if (fetchedConfig && typeof fetchedConfig === 'object') {
+        config.primaryColor = fetchedConfig.primaryColor || fetchedConfig.primary_color || config.primaryColor;
+        config.position = fetchedConfig.position || fetchedConfig.widget_position || config.position;
+        config.launcherStyle = fetchedConfig.launcherStyle || fetchedConfig.launcher_style || fetchedConfig.style || config.launcherStyle;
+        config.launcherText = fetchedConfig.launcherText || fetchedConfig.launcher_text || config.launcherText;
+        config.launcherPlaceholder = fetchedConfig.launcherPlaceholder || fetchedConfig.launcher_placeholder || config.launcherPlaceholder;
       }
       renderLauncher();
     })
@@ -395,7 +419,6 @@
       renderLauncher();
     });
 
-  // Listen for close postMessage from iframe
   window.addEventListener('message', function (event) {
     if (event.data && event.data.type === 'ai-widget-close') {
       closeWidget();
