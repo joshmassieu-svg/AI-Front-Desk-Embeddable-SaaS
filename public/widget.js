@@ -46,21 +46,36 @@
   hostElement.id = 'ai-assistant-widget-root';
   hostElement.style.position = 'fixed';
   hostElement.style.zIndex = '999999';
-  hostElement.style.bottom = '20px';
-  hostElement.style.right = '20px';
   hostElement.style.pointerEvents = 'none';
   document.body.appendChild(hostElement);
 
   var shadow = hostElement.attachShadow({ mode: 'open' });
 
+  function updateHostPosition(pos) {
+    hostElement.style.top = '';
+    hostElement.style.bottom = '20px';
+    hostElement.style.left = '';
+    hostElement.style.right = '';
+    hostElement.style.transform = '';
+
+    if (pos === 'bottom-left') {
+      hostElement.style.left = '20px';
+    } else if (pos === 'bottom-center') {
+      hostElement.style.left = '50%';
+      hostElement.style.transform = 'translateX(-50%)';
+    } else {
+      hostElement.style.right = '20px';
+    }
+  }
+
   function getPositionCss(pos) {
     if (pos === 'bottom-left') {
-      return 'bottom: 20px; left: 20px; align-items: flex-start;';
+      return 'bottom: 0; left: 0; align-items: flex-start;';
     }
     if (pos === 'bottom-center') {
-      return 'bottom: 20px; left: 50%; transform: translateX(-50%); align-items: center;';
+      return 'bottom: 0; left: 0; align-items: center;';
     }
-    return 'bottom: 20px; right: 20px; align-items: flex-end;';
+    return 'bottom: 0; right: 0; align-items: flex-end;';
   }
 
   function getStyles(cfg) {
@@ -284,6 +299,7 @@
   }
 
   function renderLauncher() {
+    updateHostPosition(config.position || 'bottom-right');
     styleTag.textContent = getStyles(config);
 
     var closeSvg = `
