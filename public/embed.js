@@ -51,7 +51,7 @@
 
   var shadow = hostElement.attachShadow({ mode: 'open' });
 
-  // FIXED CENTERING: 100vw container eliminates transform offsets
+  // EXACT VIEWPORT CENTERING FIX
   function updateHostPosition(pos) {
     hostElement.style.top = '';
     hostElement.style.bottom = '20px';
@@ -63,9 +63,8 @@
     if (pos === 'bottom-left') {
       hostElement.style.left = '20px';
     } else if (pos === 'bottom-center') {
-      hostElement.style.left = '0';
-      hostElement.style.right = '0';
-      hostElement.style.width = '100vw';
+      hostElement.style.left = '50%';
+      hostElement.style.transform = 'translateX(-50%)';
     } else {
       hostElement.style.right = '20px';
     }
@@ -73,12 +72,12 @@
 
   function getPositionCss(pos) {
     if (pos === 'bottom-left') {
-      return 'align-items: flex-start; width: auto;';
+      return 'align-items: flex-start;';
     }
     if (pos === 'bottom-center') {
-      return 'align-items: center; width: 100%;';
+      return 'align-items: center;';
     }
-    return 'align-items: flex-end; width: auto;';
+    return 'align-items: flex-end;';
   }
 
   function hexToRgba(hex, alpha) {
@@ -111,12 +110,14 @@
         ${posCss}
         display: flex;
         flex-direction: column;
+        justify-content: center;
       }
       .launcher-container {
         pointer-events: auto;
         display: flex;
         align-items: center;
         justify-content: center;
+        margin: 0 auto;
       }
 
       /* Variant: Circle */
