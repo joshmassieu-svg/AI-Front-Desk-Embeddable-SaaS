@@ -2,11 +2,11 @@
 
 import React, { useEffect } from 'react';
 import Link from 'next/link';
-import { Bot, ArrowLeft, ExternalLink, Sparkles, CheckCircle2, ShieldCheck, Zap } from 'lucide-react';
+import { ArrowLeft, Sparkles, CheckCircle2, Zap } from 'lucide-react';
 
 export default function DemoEmbedPage() {
   useEffect(() => {
-    // Inject widget script dynamically into host demo page
+    // Inject widget script dynamically into host demo page on mount
     const existing = document.getElementById('demo-widget-script');
     if (!existing) {
       const script = document.createElement('script');
@@ -25,7 +25,7 @@ export default function DemoEmbedPage() {
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-brand-400" />
           <span>
-            <strong>Host Demo Environment</strong>: Loading <code className="text-brand-300">/widget.js</code> with Shadow DOM isolation. Look at the bottom right corner!
+            <strong>Host Demo Environment</strong>: <code className="text-brand-300">/widget.js</code> loaded. Click the launcher button to dynamically generate the chat <code className="text-brand-300">&lt;iframe&gt;</code>.
           </span>
         </div>
 
@@ -77,16 +77,16 @@ export default function DemoEmbedPage() {
         <div className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 max-w-xl mx-auto text-left space-y-3">
           <div className="text-xs font-bold text-slate-300 uppercase tracking-wider">Try Asking the Widget:</div>
           <ul className="space-y-2 text-xs text-slate-400">
-            <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> <em>"What features does Acme offer?"</em></li>
-            <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> <em>"How much does the Pro plan cost?"</em></li>
-            <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> <em>"I need to speak with a human support rep."</em></li>
+            <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> <em>&quot;What features does Acme offer?&quot;</em></li>
+            <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> <em>&quot;How much does the Pro plan cost?&quot;</em></li>
+            <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> <em>&quot;I need to speak with a human support rep.&quot;</em></li>
           </ul>
         </div>
       </main>
 
       {/* Footer */}
       <footer className="border-t border-slate-800/80 py-6 text-center text-slate-500 text-xs">
-        <p>© 2026 NexusTech Solutions Host Demo Page. AI Widget Embedded via Shadow DOM.</p>
+        <p>© 2026 NexusTech Solutions Host Demo Page. AI Widget Embedded via Shadow DOM &amp; Lazy Iframe.</p>
       </footer>
     </div>
   );

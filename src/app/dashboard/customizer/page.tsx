@@ -26,7 +26,10 @@ export default function CustomizerPage() {
     welcomeMessage: "👋 Hi there! I'm Acme's AI Assistant. How can I help you today?",
     primaryColor: '#536df4',
     theme: 'dark',
-    position: 'bottom-right',
+    position: 'bottom-right' as 'bottom-right' | 'bottom-left' | 'bottom-center',
+    launcherStyle: 'bar' as 'circle' | 'pill' | 'bar' | 'tab',
+    launcherText: 'Ask AI anything...',
+    launcherPlaceholder: 'Type a question...',
     borderRadius: 16,
     launcherIcon: 'sparkles',
     botAvatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=120&h=120&q=80',
@@ -80,6 +83,9 @@ export default function CustomizerPage() {
               primaryColor: '#536df4',
               theme: 'dark',
               position: 'bottom-right',
+              launcherStyle: 'bar',
+              launcherText: 'Ask AI anything...',
+              launcherPlaceholder: 'Type a question...',
               borderRadius: 16,
               launcherIcon: 'sparkles',
               botAvatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=120&h=120&q=80',
@@ -178,6 +184,85 @@ export default function CustomizerPage() {
                 onChange={(e) => setConfig({ ...config, borderRadius: parseInt(e.target.value) })}
                 className="w-full accent-brand-500 bg-slate-800 h-1.5 rounded-lg cursor-pointer"
               />
+            </div>
+          </div>
+
+          {/* Launcher Variant & Positioning Settings */}
+          <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
+            <h3 className="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-3">
+              <Layout className="w-4 h-4 text-brand-400" /> Launcher Style & Position
+            </h3>
+
+            {/* Style Selector */}
+            <div>
+              <label className="text-xs font-semibold text-slate-300 block mb-2">Launcher Type</label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { id: 'bar', label: '✨ Ask AI Bar' },
+                  { id: 'circle', label: '⚪ Circle Icon' },
+                  { id: 'pill', label: '💊 Pill Button' },
+                  { id: 'tab', label: '🔖 Side Tab' },
+                ].map((st) => (
+                  <button
+                    key={st.id}
+                    onClick={() => setConfig({ ...config, launcherStyle: st.id as any })}
+                    className={`px-3 py-2 rounded-xl border text-xs font-medium transition text-center ${
+                      config.launcherStyle === st.id
+                        ? 'bg-slate-900 border-brand-500 text-brand-300'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    {st.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom Label or Placeholder */}
+            {config.launcherStyle === 'bar' ? (
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">Input Bar Placeholder</label>
+                <input
+                  type="text"
+                  value={config.launcherPlaceholder}
+                  onChange={(e) => setConfig({ ...config, launcherPlaceholder: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-brand-500"
+                />
+              </div>
+            ) : config.launcherStyle !== 'circle' ? (
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">Launcher Label Text</label>
+                <input
+                  type="text"
+                  value={config.launcherText}
+                  onChange={(e) => setConfig({ ...config, launcherText: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-brand-500"
+                />
+              </div>
+            ) : null}
+
+            {/* Position Selector */}
+            <div>
+              <label className="text-xs font-semibold text-slate-300 block mb-2">Screen Position</label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { id: 'bottom-right', label: 'Bottom Right' },
+                  { id: 'bottom-center', label: 'Bottom Center' },
+                  { id: 'bottom-left', label: 'Bottom Left' },
+                ].map((pos) => (
+                  <button
+                    key={pos.id}
+                    onClick={() => setConfig({ ...config, position: pos.id as any })}
+                    className={`px-2 py-2 rounded-xl border text-[11px] font-medium transition text-center ${
+                      config.position === pos.id
+                        ? 'bg-slate-900 border-brand-500 text-brand-300'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    {pos.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -308,8 +393,12 @@ export default function CustomizerPage() {
               {/* Widget Frame Component Mock inside Host Viewport */}
               <div
                 className={`absolute bottom-4 ${
-                  config.position === 'bottom-left' ? 'left-4' : 'right-4'
-                } flex flex-col ${config.position === 'bottom-left' ? 'items-start' : 'items-end'}`}
+                  config.position === 'bottom-left'
+                    ? 'left-4 items-start'
+                    : config.position === 'bottom-center'
+                    ? 'left-1/2 -translate-x-1/2 items-center'
+                    : 'right-4 items-end'
+                } flex flex-col`}
               >
                 {/* Chat Panel Box */}
                 <div
@@ -403,13 +492,44 @@ export default function CustomizerPage() {
                   </div>
                 </div>
 
-                {/* Floating Launcher Button */}
-                <div
-                  className="w-12 h-12 rounded-full flex items-center justify-center text-white shadow-glow cursor-pointer"
-                  style={{ backgroundColor: config.primaryColor }}
-                >
-                  <Sparkles className="w-6 h-6" />
-                </div>
+                {/* Floating Launcher Variant Mock */}
+                {config.launcherStyle === 'bar' ? (
+                  <div className="w-[280px] h-10 rounded-full bg-slate-900 border border-slate-700/80 px-3 flex items-center gap-2 text-xs shadow-glow">
+                    <Sparkles className="w-4 h-4 text-brand-400 shrink-0" />
+                    <span className="text-slate-400 truncate flex-1 text-[11px]">
+                      {config.launcherPlaceholder || 'Ask AI anything...'}
+                    </span>
+                    <div
+                      className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px]"
+                      style={{ backgroundColor: config.primaryColor }}
+                    >
+                      ➔
+                    </div>
+                  </div>
+                ) : config.launcherStyle === 'pill' ? (
+                  <div
+                    className="px-4 py-2.5 rounded-full text-white font-semibold text-xs flex items-center gap-2 shadow-glow cursor-pointer"
+                    style={{ backgroundColor: config.primaryColor }}
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>{config.launcherText || 'Ask AI'}</span>
+                  </div>
+                ) : config.launcherStyle === 'tab' ? (
+                  <div
+                    className="px-4 py-1.5 rounded-t-xl text-white font-semibold text-xs flex items-center gap-1.5 shadow-md cursor-pointer"
+                    style={{ backgroundColor: config.primaryColor }}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>{config.launcherText || 'Need Help?'}</span>
+                  </div>
+                ) : (
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center text-white shadow-glow cursor-pointer"
+                    style={{ backgroundColor: config.primaryColor }}
+                  >
+                    <Sparkles className="w-6 h-6" />
+                  </div>
+                )}
               </div>
             </div>
           </div>
