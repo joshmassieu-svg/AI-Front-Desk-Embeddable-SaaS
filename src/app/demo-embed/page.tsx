@@ -1,17 +1,12 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useEffect } from 'react';
 import Link from 'next/link';
-import { Bot, ArrowLeft, ExternalLink, Sparkles, CheckCircle2, ShieldCheck, Zap, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Sparkles, CheckCircle2, Zap } from 'lucide-react';
 
 export default function DemoEmbedPage() {
-  const [widgetLaunched, setWidgetLaunched] = useState(false);
-
-  const handleLaunchWidget = useCallback(() => {
-    if (widgetLaunched) return;
-    setWidgetLaunched(true);
-
-    // Inject widget script dynamically into host demo page
+  useEffect(() => {
+    // Inject widget script dynamically into host demo page on mount
     const existing = document.getElementById('demo-widget-script');
     if (!existing) {
       const script = document.createElement('script');
@@ -21,7 +16,7 @@ export default function DemoEmbedPage() {
       script.async = true;
       document.body.appendChild(script);
     }
-  }, [widgetLaunched]);
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#0a0f1d] text-slate-100 flex flex-col justify-between relative overflow-hidden">
@@ -30,7 +25,7 @@ export default function DemoEmbedPage() {
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-brand-400" />
           <span>
-            <strong>Host Demo Environment</strong>: Click the launcher button to load <code className="text-brand-300">/widget.js</code> with Shadow DOM isolation.
+            <strong>Host Demo Environment</strong>: <code className="text-brand-300">/widget.js</code> loaded. Click the launcher button to dynamically generate the chat <code className="text-brand-300">&lt;iframe&gt;</code>.
           </span>
         </div>
 
@@ -91,22 +86,8 @@ export default function DemoEmbedPage() {
 
       {/* Footer */}
       <footer className="border-t border-slate-800/80 py-6 text-center text-slate-500 text-xs">
-        <p>© 2026 NexusTech Solutions Host Demo Page. AI Widget Embedded via Shadow DOM.</p>
+        <p>© 2026 NexusTech Solutions Host Demo Page. AI Widget Embedded via Shadow DOM &amp; Lazy Iframe.</p>
       </footer>
-
-      {/* Floating Launcher Button — only visible before widget is loaded */}
-      {!widgetLaunched && (
-        <button
-          onClick={handleLaunchWidget}
-          className="fixed bottom-5 right-5 z-[999999] w-[60px] h-[60px] rounded-full bg-gradient-to-tr from-brand-600 to-indigo-500 text-white border-none cursor-pointer flex items-center justify-center shadow-[0_8px_24px_rgba(0,0,0,0.3),0_0_20px_rgba(83,109,244,0.4)] hover:scale-110 hover:shadow-[0_12px_30px_rgba(0,0,0,0.4),0_0_30px_rgba(83,109,244,0.7)] transition-all duration-300 group"
-          title="Launch AI Assistant"
-          aria-label="Launch AI Assistant Widget"
-        >
-          <MessageSquare className="w-7 h-7 group-hover:scale-110 transition-transform duration-200" />
-          {/* Pulse ring animation */}
-          <span className="absolute inset-0 rounded-full border-2 border-brand-400 animate-ping opacity-40 pointer-events-none" />
-        </button>
-      )}
     </div>
   );
 }
