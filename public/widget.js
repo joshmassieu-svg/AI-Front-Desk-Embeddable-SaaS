@@ -17,12 +17,12 @@
   if (!websiteId) websiteId = 'site_acme_123';
 
   // Production snippet domain: demo.flowdexx.com
-  var apiOrigin = (function() {
+  var apiOrigin = (function () {
     if (currentScript && currentScript.src) {
       try {
         var u = new URL(currentScript.src);
         return u.origin;
-      } catch (e) {}
+      } catch (e) { }
     }
     return window.location.origin.indexOf('localhost') !== -1 ? window.location.origin : 'https://demo.flowdexx.com';
   })();
@@ -731,7 +731,7 @@
         reader.read().then(function (result) {
           if (result.done) return;
           var chunk = decoder.decode(result.value, { stream: true });
-          
+
           var lines = chunk.split('\n');
           lines.forEach(function (line) {
             if (line.indexOf('data: ') === 0) {
@@ -753,7 +753,7 @@
                 if (json.status) {
                   currentStatus = json.status;
                 }
-              } catch (e) {}
+              } catch (e) { }
             }
           });
           read();
