@@ -1,473 +1,351 @@
 'use client';
 
-import React, { useState, useEffect, useRef, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { Trash2, X, Send } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface Message {
   id: string;
-  sender: 'visitor' | 'ai' | 'agent';
-  content: string;
-  agentName?: string;
-  sources?: { title: string; url?: string }[];
-  createdAt: string;
+  sender: 'user' | 'agent';
+  text: string;
 }
 
-interface WebsiteConfig {
-  id: string;
-  botName: string;
-  welcomeMessage: string;
-  primaryColor: string;
-  theme: 'dark' | 'light' | 'auto';
-  borderRadius: number;
-  botAvatar: string;
-  leadFormEnabled: boolean;
-  leadFormTitle: string;
-  leadFields?: { name?: boolean; email?: boolean; company?: boolean };
-  suggestedQuestions?: string[];
-}
+export default function WidgetFrame() {
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: '1',
+      sender: 'agent',
+      text: 'Hi! What would you like to know about Handhold?',
+    },
+    {
+      id: '2',
+      sender: 'user',
+      text: 'Hi',
+    },
+    {
+      id: '3',
+      sender: 'user',
+      text: 'Ok',
+    },
+    {
+      id: '4',
+      sender: 'agent',
+      text: "I'm here whenever you have a question about Handhold.",
+    },
+  ]);
 
-function WidgetFrameContent() {
-  const searchParams = useSearchParams();
-  const siteId = searchParams.get('siteId') || searchParams.get('websiteId') || 'site_acme_123';
+  const [inputQuery, setInputQuery] = useState('');
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const [config, setConfig] = useState<WebsiteConfig | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [inputValue, setInputValue] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const [visitorId, setVisitorId] = useState('');
-  const [conversationId, setConversationId] = useState<string | null>(null);
-  const [isLeadDone, setIsLeadDone] = useState(false);
-  const [leadName, setLeadName] = useState('');
-  const [leadEmail, setLeadEmail] = useState('');
-  const [leadCompany, setLeadCompany] = useState('');
-
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const initialQuery = searchParams.get('initialQuery');
-  const initialQueryProcessed = useRef(false);
-
-  // Initialize Visitor ID and fetch config
-  useEffect(() => {
-    let vid = localStorage.getItem('ai_widget_visitor_id');
-    if (!vid) {
-      vid = 'vis_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
-      localStorage.setItem('ai_widget_visitor_id', vid);
-    }
-    setVisitorId(vid);
-
-    const savedConvId = localStorage.getItem('ai_widget_conv_id_' + siteId);
-    if (savedConvId) setConversationId(savedConvId);
-
-    const leadDone = localStorage.getItem('ai_widget_lead_done_' + siteId) === 'true';
-    setIsLeadDone(leadDone);
-
-    fetch(`/api/v1/widget/config?siteId=${siteId}`)
-      .then((res) => res.json())
-      .then((data: WebsiteConfig) => {
-        setConfig(data);
-        const welcomeMsg: Message = {
-          id: 'welcome',
-          sender: 'ai',
-          content: data.welcomeMessage || "👋 Hi there! How can I help you today?",
-          createdAt: new Date().toISOString(),
-        };
-        setMessages([welcomeMsg]);
-
-        if (initialQuery && !initialQueryProcessed.current) {
-          initialQueryProcessed.current = true;
-          setTimeout(() => {
-            handleSend(initialQuery);
-          }, 300);
-        }
-      })
-      .catch((err) => console.error('Failed to load widget config:', err));
-  }, [siteId]);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isTyping]);
+  const suggestions = [
+    'What types of AI agents exist?',
+    'How does the platform work?',
+    'Pricing plans',
+  ];
 
   const handleClose = () => {
-    if (window.parent) {
-      window.parent.postMessage({ type: 'ai-widget-close' }, '*');
-    }
+    window.parent.postMessage({ type: 'ai-widget-close' }, '*');
   };
 
-  const clearChat = () => {
-    if (!config) return;
-    setMessages([
-      {
-        id: 'welcome',
-        sender: 'ai',
-        content: config.welcomeMessage,
-        createdAt: new Date().toISOString(),
-      },
-    ]);
-  };
+  const handleSend = (textToSend?: string) => {
+    const query = textToSend || inputQuery;
+    if (!query.trim()) return;
 
-  const handleSend = async (text: string) => {
-    if (!text || !text.trim() || isTyping) return;
-    const cleanText = text.trim();
-    setInputValue('');
-
-    const userMsg: Message = {
-      id: 'usr_' + Date.now(),
-      sender: 'visitor',
-      content: cleanText,
-      createdAt: new Date().toISOString(),
-    };
-
+    const userMsg: Message = { id: Date.now().toString(), sender: 'user', text: query };
     setMessages((prev) => [...prev, userMsg]);
-    setIsTyping(true);
+    if (!textToSend) setInputQuery('');
 
-    const aiMsgId = 'ai_' + Date.now();
-    let accumulatedText = '';
-
-    try {
-      const res = await fetch('/api/v1/chat/stream', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          websiteId: siteId,
-          visitorId,
-          conversationId,
-          message: cleanText,
-          currentUrl: document.referrer || window.location.href,
-        }),
-      });
-
-      setIsTyping(false);
-
-      if (!res.body) return;
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: aiMsgId,
-          sender: 'ai',
-          content: '',
-          createdAt: new Date().toISOString(),
-        },
-      ]);
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const json = JSON.parse(line.substring(6));
-              if (json.conversationId) {
-                setConversationId(json.conversationId);
-                localStorage.setItem('ai_widget_conv_id_' + siteId, json.conversationId);
-              }
-              if (json.chunk) {
-                accumulatedText += json.chunk;
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === aiMsgId
-                      ? { ...m, content: accumulatedText, sources: json.sources || m.sources }
-                      : m
-                  )
-                );
-              }
-            } catch (e) {}
-          }
-        }
-      }
-    } catch (err) {
-      setIsTyping(false);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: 'err_' + Date.now(),
-          sender: 'ai',
-          content: 'Apologies, I encountered a connection issue. Please try again!',
-          createdAt: new Date().toISOString(),
-        },
-      ]);
-    }
+    // Simulated Agent Response
+    setTimeout(() => {
+      const agentMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        sender: 'agent',
+        text: `Thanks for asking about "${query}". Let me look that up for you!`,
+      };
+      setMessages((prev) => [...prev, agentMsg]);
+    }, 600);
   };
 
-  const handleLeadSubmit = async () => {
-    if (!leadEmail.trim()) {
-      alert('Please enter your email address.');
-      return;
-    }
-
-    try {
-      await fetch('/api/v1/leads', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          websiteId: siteId,
-          conversationId,
-          name: leadName || 'Visitor',
-          email: leadEmail,
-          company: leadCompany,
-          sourceUrl: document.referrer || window.location.href,
-        }),
-      });
-
-      setIsLeadDone(true);
-      localStorage.setItem('ai_widget_lead_done_' + siteId, 'true');
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: 'lead_thanks',
-          sender: 'ai',
-          content: '✅ Thank you! Your contact information has been saved.',
-          createdAt: new Date().toISOString(),
-        },
-      ]);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  if (!config) {
-    return (
-      <div className="w-full h-full min-h-screen bg-slate-900 text-slate-200 flex items-center justify-center text-xs">
-        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500" />
-      </div>
-    );
-  }
-
-  const isDark = config.theme === 'dark' || config.theme === 'auto';
-  const primaryColor = config.primaryColor || '#536df4';
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   return (
-    <div
-      className={`w-full h-full flex flex-col justify-between overflow-hidden text-sm font-sans ${
-        isDark ? 'bg-[#0f172a] text-slate-100' : 'bg-white text-slate-900'
-      }`}
-    >
-      {/* Header */}
-      <div
-        className={`px-4 py-3 border-b flex items-center justify-between ${
-          isDark ? 'bg-[#1e293b] border-slate-700/80' : 'bg-slate-50 border-slate-200'
-        }`}
-      >
-        <div className="flex items-center gap-3">
-          <img
-            src={config.botAvatar}
-            alt={config.botName}
-            className="w-9 h-9 rounded-full object-cover border-2"
-            style={{ borderColor: primaryColor }}
-          />
-          <div>
-            <h4 className="font-semibold text-sm leading-tight">{config.botName}</h4>
-            <div className="flex items-center gap-1.5 text-xs text-emerald-400">
-              <span className="w-2 h-2 rounded-full bg-emerald-400" />
-              <span>AI Online</span>
+    <>
+      <style>{`
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+          width: 100%;
+          height: 100%;
+          background: transparent !important;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+          overflow: hidden;
+        }
+
+        .frame-container {
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+          padding: 8px;
+          gap: 12px;
+          justify-content: flex-end;
+        }
+
+        /* CARD 1: MAIN CHAT CONTAINER */
+        .chat-card {
+          flex: 1;
+          background: #ffffff;
+          border-radius: 28px;
+          box-shadow: 0 12px 32px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+          border: 1px solid rgba(0,0,0,0.06);
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+
+        /* HEADER */
+        .chat-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 16px 20px;
+          background: #ffffff;
+        }
+        .agent-info {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .agent-avatar {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #a8ff78 0%, #78ffd6 100%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 14px;
+        }
+        .agent-names {
+          display: flex;
+          align-items: baseline;
+          gap: 6px;
+        }
+        .agent-name {
+          font-weight: 600;
+          font-size: 15px;
+          color: #0f172a;
+        }
+        .agent-title {
+          font-size: 13px;
+          color: #94a3b8;
+          font-weight: 400;
+        }
+        .close-btn {
+          background: transparent;
+          border: none;
+          cursor: pointer;
+          color: #0f172a;
+          padding: 4px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+        }
+
+        /* MESSAGES BODY */
+        .chat-messages {
+          flex: 1;
+          overflow-y: auto;
+          padding: 12px 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .message-row {
+          display: flex;
+          width: 100%;
+        }
+        .message-row.user { justify-content: flex-end; }
+        .message-row.agent { justify-content: flex-start; }
+
+        .bubble {
+          max-width: 82%;
+          padding: 12px 16px;
+          font-size: 14px;
+          line-height: 1.45;
+          border-radius: 20px;
+        }
+        .bubble.user {
+          background: #3b3d40;
+          color: #ffffff;
+          border-bottom-right-radius: 6px;
+        }
+        .bubble.agent {
+          background: transparent;
+          color: #0f172a;
+          padding-left: 0;
+        }
+
+        /* FOOTER BRANDING */
+        .chat-footer {
+          padding: 12px 20px;
+          text-align: left;
+        }
+        .powered-by {
+          font-size: 11px;
+          color: #94a3b8;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          margin-bottom: 4px;
+        }
+        .privacy-note {
+          font-size: 10px;
+          color: #cbd5e1;
+          line-height: 1.3;
+        }
+        .privacy-note a {
+          color: #94a3b8;
+          text-decoration: underline;
+        }
+
+        /* CARD 2: BOTTOM INPUT & CHIPS DOCK */
+        .input-dock {
+          background: #ffffff;
+          border-radius: 28px;
+          box-shadow: 0 12px 32px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+          border: 1px solid rgba(0,0,0,0.06);
+          padding: 10px 12px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        /* SUGGESTION CHIPS */
+        .chips-scroll {
+          display: flex;
+          gap: 8px;
+          overflow-x: auto;
+          scrollbar-width: none;
+          padding-bottom: 2px;
+        }
+        .chips-scroll::-webkit-scrollbar { display: none; }
+        .chip {
+          white-space: nowrap;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 18px;
+          padding: 8px 14px;
+          font-size: 13px;
+          color: #1e293b;
+          cursor: pointer;
+          transition: background 0.15s ease;
+        }
+        .chip:hover { background: #f1f5f9; }
+
+        /* INPUT FIELD */
+        .input-wrapper {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding-left: 8px;
+        }
+        .input-wrapper input {
+          width: 100%;
+          border: none;
+          outline: none;
+          font-size: 14px;
+          color: #0f172a;
+          background: transparent;
+        }
+        .input-wrapper input::placeholder { color: #94a3b8; }
+        .send-btn {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: #e2e8f0;
+          border: none;
+          color: #64748b;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          transition: all 0.15s ease;
+        }
+        .send-btn.active {
+          background: #0f172a;
+          color: #ffffff;
+        }
+      `}</style>
+
+      <div className="frame-container">
+        {/* CARD 1: MAIN CHAT BOX */}
+        <div className="chat-card">
+          <div className="chat-header">
+            <div className="agent-info">
+              <div className="agent-avatar">✨</div>
+              <div className="agent-names">
+                <span className="agent-name">Holly</span>
+                <span className="agent-title">Inbound Q&A agent</span>
+              </div>
+            </div>
+            <button className="close-btn" onClick={handleClose}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="chat-messages">
+            {messages.map((msg) => (
+              <div key={msg.id} className={`message-row ${msg.sender}`}>
+                <div className={`bubble ${msg.sender}`}>{msg.text}</div>
+              </div>
+            ))}
+            <div ref={chatEndRef} />
+          </div>
+
+          <div className="chat-footer">
+            <div className="powered-by">
+              powered by <strong>handhold</strong>
+            </div>
+            <div className="privacy-note">
+              AI can sometimes make mistakes. By continuing, you agree to our <a href="#">Privacy Policy</a>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-1">
-          <button
-            onClick={clearChat}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition"
-            title="Clear Chat"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-          <button
-            onClick={handleClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition"
-            title="Close Widget"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Messages Container */}
-      <div className="flex-1 p-4 overflow-y-auto space-y-3">
-        {messages.map((msg) => {
-          const isVisitor = msg.sender === 'visitor';
-          return (
-            <div
-              key={msg.id}
-              className={`flex flex-col max-w-[85%] ${isVisitor ? 'ml-auto items-end' : 'mr-auto items-start'}`}
-            >
-              {msg.sender === 'agent' && (
-                <span className="text-[11px] text-slate-400 font-medium mb-1">
-                  👨‍💼 Support Agent ({msg.agentName || 'Agent'})
-                </span>
-              )}
-
-              <div
-                className={`p-3 rounded-2xl text-xs leading-relaxed break-words ${
-                  isVisitor
-                    ? 'text-white rounded-br-none'
-                    : isDark
-                    ? 'bg-[#1e293b] text-slate-100 border border-slate-700 rounded-bl-none'
-                    : 'bg-slate-100 text-slate-900 border border-slate-200 rounded-bl-none'
-                }`}
-                style={isVisitor ? { backgroundColor: primaryColor } : {}}
-              >
-                {msg.content}
-              </div>
-
-              {msg.sources && msg.sources.length > 0 && (
-                <div className="mt-2 pt-2 border-t border-dashed border-slate-700 text-[11px] text-slate-400">
-                  Sources:
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {msg.sources.map((s, idx) => (
-                      <a
-                        key={idx}
-                        href={s.url || '#'}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-200 hover:text-white text-[10px]"
-                      >
-                        📄 {s.title}
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        {/* Suggested Questions */}
-        {config.suggestedQuestions && messages.length <= 2 && (
-          <div className="flex flex-wrap gap-1.5 pt-2">
-            {config.suggestedQuestions.map((q, i) => (
-              <button
-                key={i}
-                onClick={() => handleSend(q)}
-                className="text-xs px-3 py-1.5 rounded-full border border-indigo-500/40 text-indigo-400 hover:bg-indigo-600 hover:text-white transition text-left"
-              >
-                {q}
+        {/* CARD 2: BOTTOM INPUT DOCK */}
+        <div className="input-dock">
+          <div className="chips-scroll">
+            {suggestions.map((chipText, idx) => (
+              <button key={idx} className="chip" onClick={() => handleSend(chipText)}>
+                {chipText}
               </button>
             ))}
           </div>
-        )}
 
-        {/* Lead Form */}
-        {config.leadFormEnabled && !isLeadDone && messages.length >= 3 && (
-          <div
-            className={`p-3.5 rounded-xl border space-y-2 mt-3 ${
-              isDark ? 'bg-[#1e293b] border-indigo-500/40' : 'bg-slate-50 border-indigo-200'
-            }`}
-          >
-            <h5 className="font-semibold text-xs text-slate-200">{config.leadFormTitle}</h5>
-            {config.leadFields?.name && (
-              <input
-                type="text"
-                placeholder="Your Name"
-                value={leadName}
-                onChange={(e) => setLeadName(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-indigo-500"
-              />
-            )}
+          <div className="input-wrapper">
             <input
-              type="email"
-              placeholder="Email Address *"
-              value={leadEmail}
-              onChange={(e) => setLeadEmail(e.target.value)}
-              className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-indigo-500"
+              type="text"
+              placeholder="Ask me anything..."
+              value={inputQuery}
+              onChange={(e) => setInputQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
             />
-            {config.leadFields?.company && (
-              <input
-                type="text"
-                placeholder="Company Name"
-                value={leadCompany}
-                onChange={(e) => setLeadCompany(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-indigo-500"
-              />
-            )}
             <button
-              onClick={handleLeadSubmit}
-              className="w-full py-1.5 rounded-lg font-bold text-xs text-white transition hover:opacity-90"
-              style={{ backgroundColor: primaryColor }}
+              className={`send-btn ${inputQuery.trim() ? 'active' : ''}`}
+              onClick={() => handleSend()}
             >
-              Submit Info
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="12" y1="19" x2="12" y2="5" />
+                <polyline points="5 12 12 5 19 12" />
+              </svg>
             </button>
           </div>
-        )}
-
-        {/* Typing Indicator */}
-        {isTyping && (
-          <div className="flex items-center gap-1.5 p-3 rounded-2xl bg-[#1e293b] border border-slate-700 w-fit">
-            <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" />
-            <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce delay-100" />
-            <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce delay-200" />
-          </div>
-        )}
-
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Input Footer */}
-      <div
-        className={`p-3 border-t flex items-center gap-2 ${
-          isDark ? 'bg-[#1e293b] border-slate-700/80' : 'bg-slate-50 border-slate-200'
-        }`}
-      >
-        <input
-          type="text"
-          placeholder="Ask a question..."
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSend(inputValue)}
-          className={`flex-1 px-3.5 py-2 rounded-full border text-xs focus:outline-none ${
-            isDark
-              ? 'bg-[#0f172a] border-slate-700 text-slate-100 focus:border-indigo-500'
-              : 'bg-white border-slate-300 text-slate-900 focus:border-indigo-500'
-          }`}
-        />
-        <button
-          onClick={() => handleSend(inputValue)}
-          className="w-8 h-8 rounded-full flex items-center justify-center text-white shrink-0 hover:scale-105 transition"
-          style={{ backgroundColor: primaryColor }}
-          title="Send"
-        >
-          <Send className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* Branding */}
-      <div
-        className={`text-center py-1 text-[10px] ${
-          isDark ? 'bg-[#1e293b] text-slate-400' : 'bg-slate-100 text-slate-500'
-        }`}
-      >
-        Powered by{' '}
-        <a
-          href="https://demo.flowdexx.com"
-          target="_blank"
-          rel="noreferrer"
-          className="font-medium hover:underline"
-          style={{ color: primaryColor }}
-        >
-          FlowDexx AI
-        </a>
-      </div>
-    </div>
-  );
-}
-
-export default function WidgetFramePage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="w-full h-full min-h-screen bg-slate-900 text-slate-200 flex items-center justify-center text-xs">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500" />
         </div>
-      }
-    >
-      <WidgetFrameContent />
-    </Suspense>
+      </div>
+    </>
   );
 }
