@@ -2,7 +2,7 @@
   if (window.__AI_ASSISTANT_WIDGET_LOADED__) return;
   window.__AI_ASSISTANT_WIDGET_LOADED__ = true;
 
-  // Extract website ID from script tag
+  // Extract website ID from script tag attributes
   var currentScript = document.currentScript || (function () {
     var scripts = document.getElementsByTagName('script');
     for (var i = 0; i < scripts.length; i++) {
@@ -36,11 +36,10 @@
     primaryColor: '#536df4',
     position: 'bottom-center',
     launcherStyle: 'bar',
-    launcherText: 'Ask AI anything...',
     launcherPlaceholder: 'Ask me anything...',
   };
 
-  // Host container setup
+  // Host container setup inside Shadow DOM
   var hostElement = document.createElement('div');
   hostElement.id = 'ai-assistant-widget-root';
   hostElement.style.position = 'fixed';
@@ -50,7 +49,7 @@
 
   var shadow = hostElement.attachShadow({ mode: 'open' });
 
-  // Centering & Layout Positioning
+  // Absolute Centering & Mobile Bounds Logic
   function updateHostPosition(pos) {
     hostElement.style.top = '';
     hostElement.style.bottom = '16px';
@@ -95,15 +94,28 @@
         justify-content: flex-end;
         margin: 0 auto;
       }
+
+      /* LAUNCHER CONTAINER WITH MORPH ANIMATION */
       .launcher-container {
         pointer-events: auto;
         display: flex;
         align-items: center;
         justify-content: center;
         margin: 0 auto;
+        transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+        transform-origin: bottom center;
+        opacity: 1;
+        transform: scale(1);
+      }
+      .launcher-container.hidden {
+        opacity: 0;
+        transform: scale(0.92) translateY(10px);
+        pointer-events: none;
+        height: 0;
+        overflow: hidden;
       }
 
-      /* IFRAME CONTAINER BOUNDS */
+      /* IFRAME CONTAINER WITH SMOOTH EXPAND ANIMATION */
       .iframe-wrapper {
         width: 400px;
         height: 680px;
@@ -112,11 +124,19 @@
         margin-bottom: 8px;
         background: transparent;
         border: none;
-        display: none;
         pointer-events: auto;
+        opacity: 0;
+        transform: scale(0.95) translateY(20px);
+        transform-origin: bottom center;
+        transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+        display: none;
+      }
+      .iframe-wrapper.visible {
+        display: block;
       }
       .iframe-wrapper.open {
-        display: block;
+        opacity: 1;
+        transform: scale(1) translateY(0);
       }
       .iframe-element {
         width: 100%;
@@ -125,7 +145,7 @@
         background: transparent;
       }
 
-      /* LAUNCHER INPUT BAR */
+      /* LAUNCHER BAR STYLING */
       .launcher-bar {
         height: 52px;
         width: 340px;
@@ -138,6 +158,11 @@
         align-items: center;
         padding: 4px 6px 4px 16px;
         gap: 8px;
+        transition: box-shadow 0.2s ease, border-color 0.2s ease;
+      }
+      .launcher-bar:focus-within {
+        border-color: rgba(255,255,255,0.3);
+        box-shadow: 0 14px 36px rgba(0,0,0,0.45);
       }
       .launcher-bar input {
         flex: 1;
@@ -162,9 +187,7 @@
         flex-shrink: 0;
         transition: transform 0.15s ease;
       }
-      .launcher-bar button:hover {
-        transform: scale(1.06);
-      }
+      .launcher-bar button:hover { transform: scale(1.06); }
 
       @media (max-width: 480px) {
         .iframe-wrapper {
@@ -211,16 +234,28 @@
   function openWidget(initialQuery) {
     createIframe(initialQuery);
     isOpen = true;
-    iframeContainer.classList.add('open');
-    launcherContainer.style.display = 'none'; // Hide launcher bar when frame is open
-    renderLauncher();
+
+    // Trigger morphing transition
+    launcherContainer.classList.add('hidden');
+    iframeContainer.classList.add('visible');
+
+    requestAnimationFrame(function () {
+      setTimeout(function () {
+        iframeContainer.classList.add('open');
+      }, 20);
+    });
   }
 
   function closeWidget() {
     isOpen = false;
+
+    // Trigger collapse transition
     iframeContainer.classList.remove('open');
-    launcherContainer.style.display = 'flex'; // Show launcher bar again on close
-    renderLauncher();
+
+    setTimeout(function () {
+      iframeContainer.classList.remove('visible');
+      launcherContainer.classList.remove('hidden');
+    }, 300);
   }
 
   function renderLauncher() {
@@ -246,7 +281,7 @@
     var triggerFromBar = function () {
       var query = inputEl.value ? inputEl.value.trim() : '';
       openWidget(query);
-      inputEl.value = ''; // Clear input field after launching
+      inputEl.value = '';
     };
 
     submitBtn.onclick = triggerFromBar;
@@ -255,7 +290,7 @@
     };
   }
 
-  // Fetch widget config
+  // Fetch backend configuration
   fetch(apiOrigin + '/api/v1/widget/config?siteId=' + encodeURIComponent(websiteId) + '&t=' + Date.now())
     .then(function (res) { return res.json(); })
     .then(function (res) {
@@ -268,7 +303,7 @@
     })
     .catch(function () { renderLauncher(); });
 
-  // Listen for close commands from iframe
+  // Handle close postMessages from iframe
   window.addEventListener('message', function (event) {
     if (event.data && event.data.type === 'ai-widget-close') {
       closeWidget();
