@@ -15,25 +15,11 @@ export default function WidgetFrame() {
       sender: 'agent',
       text: 'Hi! What would you like to know about Handhold?',
     },
-    {
-      id: '2',
-      sender: 'user',
-      text: 'Hi',
-    },
-    {
-      id: '3',
-      sender: 'user',
-      text: 'Ok',
-    },
-    {
-      id: '4',
-      sender: 'agent',
-      text: "I'm here whenever you have a question about Handhold.",
-    },
   ]);
 
   const [inputQuery, setInputQuery] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const initialHandledRef = useRef(false);
 
   const suggestions = [
     'What types of AI agents exist?',
@@ -53,17 +39,39 @@ export default function WidgetFrame() {
     setMessages((prev) => [...prev, userMsg]);
     if (!textToSend) setInputQuery('');
 
-    // Simulated Agent Response
+    // Simulated Agent AI Response
     setTimeout(() => {
       const agentMsg: Message = {
         id: (Date.now() + 1).toString(),
         sender: 'agent',
-        text: `Thanks for asking about "${query}". Let me look that up for you!`,
+        text: `I'm here whenever you have a question about Handhold.`,
       };
       setMessages((prev) => [...prev, agentMsg]);
     }, 600);
   };
 
+  // Capture input submitted directly from the client page's launcher bar
+  useEffect(() => {
+    if (!initialHandledRef.current) {
+      const params = new URLSearchParams(window.location.search);
+      const initialQuery = params.get('initialQuery');
+      if (initialQuery && initialQuery.trim()) {
+        initialHandledRef.current = true;
+        handleSend(initialQuery.trim());
+      }
+    }
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'ai-widget-query' && event.data.query) {
+        handleSend(event.data.query.trim());
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  // Auto-scroll chat to bottom
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -208,7 +216,7 @@ export default function WidgetFrame() {
           text-decoration: underline;
         }
 
-        /* CARD 2: BOTTOM INPUT & CHIPS DOCK */
+        /* CARD 2: BOTTOM INPUT DOCK */
         .input-dock {
           background: #ffffff;
           border-radius: 28px;
