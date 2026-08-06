@@ -16,6 +16,10 @@ export interface WebsiteConfig {
   launcherStyle?: 'circle' | 'pill' | 'bar' | 'tab';
   launcherText?: string;
   launcherPlaceholder?: string;
+  launcherAnimation?: 'none' | 'pulse' | 'glow' | 'bounce' | 'float';
+  launcherTheme?: 'solid' | 'cosmic' | 'sunset' | 'ocean' | 'rainbow' | 'glass';
+  enableParticleTrail?: boolean;
+  enableLoadingWaves?: boolean;
   borderRadius: number; // px
   fontFamily: string;
   customCss?: string;
