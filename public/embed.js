@@ -2,10 +2,11 @@
   if (window.__AI_ASSISTANT_WIDGET_LOADED__) return;
   window.__AI_ASSISTANT_WIDGET_LOADED__ = true;
 
+  // Extract website ID from script tag
   var currentScript = document.currentScript || (function () {
     var scripts = document.getElementsByTagName('script');
     for (var i = 0; i < scripts.length; i++) {
-      if (scripts[i].src && scripts[i].src.indexOf('embed.js') !== -1 || scripts[i].src.indexOf('widget.js') !== -1) {
+      if (scripts[i].src && (scripts[i].src.indexOf('embed.js') !== -1 || scripts[i].src.indexOf('widget.js') !== -1)) {
         return scripts[i];
       }
     }
@@ -15,6 +16,7 @@
   var websiteId = currentScript ? (currentScript.getAttribute('data-website-id') || currentScript.getAttribute('data-site-id')) : 'site_acme_123';
   if (!websiteId) websiteId = 'site_acme_123';
 
+  // Determine API Origin
   var apiOrigin = (function () {
     if (currentScript && currentScript.src) {
       try {
@@ -38,6 +40,7 @@
     launcherPlaceholder: 'Ask me anything...',
   };
 
+  // Host container setup
   var hostElement = document.createElement('div');
   hostElement.id = 'ai-assistant-widget-root';
   hostElement.style.position = 'fixed';
@@ -47,6 +50,7 @@
 
   var shadow = hostElement.attachShadow({ mode: 'open' });
 
+  // Centering & Layout Positioning
   function updateHostPosition(pos) {
     hostElement.style.top = '';
     hostElement.style.bottom = '16px';
@@ -121,7 +125,7 @@
         background: transparent;
       }
 
-      /* Launcher bar & button styles */
+      /* LAUNCHER INPUT BAR */
       .launcher-bar {
         height: 52px;
         width: 340px;
@@ -134,7 +138,6 @@
         align-items: center;
         padding: 4px 6px 4px 16px;
         gap: 8px;
-        cursor: pointer;
       }
       .launcher-bar input {
         flex: 1;
@@ -156,6 +159,11 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        flex-shrink: 0;
+        transition: transform 0.15s ease;
+      }
+      .launcher-bar button:hover {
+        transform: scale(1.06);
       }
 
       @media (max-width: 480px) {
@@ -204,14 +212,14 @@
     createIframe(initialQuery);
     isOpen = true;
     iframeContainer.classList.add('open');
-    launcherContainer.style.display = 'none'; // Hide trigger when frame is open
+    launcherContainer.style.display = 'none'; // Hide launcher bar when frame is open
     renderLauncher();
   }
 
   function closeWidget() {
     isOpen = false;
     iframeContainer.classList.remove('open');
-    launcherContainer.style.display = 'flex';
+    launcherContainer.style.display = 'flex'; // Show launcher bar again on close
     renderLauncher();
   }
 
@@ -235,14 +243,19 @@
     var inputEl = launcherContainer.querySelector('#bar-input-field');
     var submitBtn = launcherContainer.querySelector('#btn-bar-submit');
 
-    var trigger = function () {
-      openWidget(inputEl.value ? inputEl.value.trim() : '');
+    var triggerFromBar = function () {
+      var query = inputEl.value ? inputEl.value.trim() : '';
+      openWidget(query);
+      inputEl.value = ''; // Clear input field after launching
     };
 
-    submitBtn.onclick = trigger;
-    inputEl.onkeydown = function (e) { if (e.key === 'Enter') trigger(); };
+    submitBtn.onclick = triggerFromBar;
+    inputEl.onkeydown = function (e) {
+      if (e.key === 'Enter') triggerFromBar();
+    };
   }
 
+  // Fetch widget config
   fetch(apiOrigin + '/api/v1/widget/config?siteId=' + encodeURIComponent(websiteId) + '&t=' + Date.now())
     .then(function (res) { return res.json(); })
     .then(function (res) {
@@ -255,6 +268,7 @@
     })
     .catch(function () { renderLauncher(); });
 
+  // Listen for close commands from iframe
   window.addEventListener('message', function (event) {
     if (event.data && event.data.type === 'ai-widget-close') {
       closeWidget();
