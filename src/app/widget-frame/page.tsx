@@ -39,7 +39,7 @@ export default function WidgetFrame() {
     setMessages((prev) => [...prev, userMsg]);
     if (!textToSend) setInputQuery('');
 
-    // Simulated Agent AI Response
+    // Simulated AI response delay
     setTimeout(() => {
       const agentMsg: Message = {
         id: (Date.now() + 1).toString(),
@@ -50,7 +50,7 @@ export default function WidgetFrame() {
     }, 600);
   };
 
-  // Capture input submitted directly from the client page's launcher bar
+  // Receive search queries submitted through the launcher bar
   useEffect(() => {
     if (!initialHandledRef.current) {
       const params = new URLSearchParams(window.location.search);
@@ -71,7 +71,7 @@ export default function WidgetFrame() {
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-  // Auto-scroll chat to bottom
+  // Auto-scroll chat window to bottom
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -95,6 +95,18 @@ export default function WidgetFrame() {
           padding: 8px;
           gap: 12px;
           justify-content: flex-end;
+          animation: frameFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes frameFadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(16px) scale(0.96);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
         }
 
         /* CARD 1: MAIN CHAT CONTAINER */
