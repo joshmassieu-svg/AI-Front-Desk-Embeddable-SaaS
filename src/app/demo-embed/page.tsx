@@ -16,7 +16,7 @@ export default function DemoEmbedPage() {
     if (!existing) {
       const script = document.createElement('script');
       script.id = 'demo-widget-script';
-      script.src = '/widget.js';
+      script.src = '/embed.js';
       script.setAttribute('data-website-id', siteIdToUse);
       script.async = true;
       document.body.appendChild(script);

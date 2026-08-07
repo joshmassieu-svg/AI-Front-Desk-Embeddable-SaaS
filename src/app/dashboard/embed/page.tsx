@@ -19,7 +19,7 @@ export default function EmbedPage() {
   const siteId = currentSite?.id || '';
   const domain = currentSite?.domain || 'localhost';
 
-  const snippet = `<script src="${appUrl}/widget.js" data-website-id="${siteId}" async></script>`;
+  const snippet = `<script src="${appUrl}/embed.js" data-website-id="${siteId}" async></script>`;
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -106,7 +106,7 @@ export default function RootLayout({ children }) {
       <body>
         {children}
         <Script
-          src="${appUrl}/widget.js"
+          src="${appUrl}/embed.js"
           data-website-id="${siteId}"
           strategy="lazyOnload"
         />
@@ -124,7 +124,7 @@ export default function RootLayout({ children }) {
             <pre className="bg-slate-950 p-4 rounded-xl text-xs font-mono text-slate-300 overflow-x-auto border border-slate-800">
 {`useEffect(() => {
   const script = document.createElement('script');
-  script.src = '${appUrl}/widget.js';
+  script.src = '${appUrl}/embed.js';
   script.setAttribute('data-website-id', '${siteId}');
   script.async = true;
   document.body.appendChild(script);
@@ -141,7 +141,7 @@ export default function RootLayout({ children }) {
 
 onMounted(() => {
   const script = document.createElement('script');
-  script.src = '${appUrl}/widget.js';
+  script.src = '${appUrl}/embed.js';
   script.setAttribute('data-website-id', '${siteId}');
   script.async = true;
   document.body.appendChild(script);
