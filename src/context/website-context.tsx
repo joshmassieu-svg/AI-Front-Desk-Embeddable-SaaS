@@ -2,6 +2,8 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { WebsiteConfig } from '@/lib/types';
+import { useAuth } from '@/context/auth-context';
+import { getOrCreateUserWorkplace, updateWorkplaceWebsiteInFirestore, Workplace } from '@/lib/firestore-service';
 
 interface WebsiteContextType {
   websites: WebsiteConfig[];
@@ -9,8 +11,10 @@ interface WebsiteContextType {
   currentSiteId: string;
   setCurrentSiteId: (id: string) => void;
   isLoading: boolean;
+  workplace: Workplace | null;
   refreshWebsites: () => Promise<void>;
   createWebsite: (name: string, domain: string) => Promise<WebsiteConfig | null>;
+  updateWebsite: (updates: Partial<WebsiteConfig>) => Promise<WebsiteConfig | null>;
 }
 
 const defaultSite: WebsiteConfig = {
@@ -63,23 +67,46 @@ const WebsiteContext = createContext<WebsiteContextType>({
   currentSiteId: 'site_acme_123',
   setCurrentSiteId: () => {},
   isLoading: false,
+  workplace: null,
   refreshWebsites: async () => {},
   createWebsite: async () => null,
+  updateWebsite: async () => null,
 });
 
 export function WebsiteProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const [websites, setWebsites] = useState<WebsiteConfig[]>([defaultSite]);
   const [currentSiteId, setCurrentSiteIdState] = useState<string>('site_acme_123');
+  const [workplace, setWorkplace] = useState<Workplace | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Load saved site selection from localStorage on client mount
+  // Sync user's workplace website from Firestore (default) database
   useEffect(() => {
-    const savedSiteId = localStorage.getItem('active_website_id');
-    if (savedSiteId) {
-      setCurrentSiteIdState(savedSiteId);
+    async function loadUserWorkplace() {
+      if (user) {
+        setIsLoading(true);
+        try {
+          const wp = await getOrCreateUserWorkplace(user.uid, user.email || '');
+          setWorkplace(wp);
+          setWebsites([wp.websiteConfig]);
+          setCurrentSiteIdState(wp.websiteConfig.id);
+          localStorage.setItem('active_website_id', wp.websiteConfig.id);
+        } catch (err) {
+          console.error('Failed loading user workplace from Firestore:', err);
+        } finally {
+          setIsLoading(false);
+        }
+      } else {
+        const savedSiteId = localStorage.getItem('active_website_id');
+        if (savedSiteId) {
+          setCurrentSiteIdState(savedSiteId);
+        }
+        refreshWebsites();
+      }
     }
-    refreshWebsites();
-  }, []);
+
+    loadUserWorkplace();
+  }, [user]);
 
   const setCurrentSiteId = (id: string) => {
     setCurrentSiteIdState(id);
@@ -87,6 +114,20 @@ export function WebsiteProvider({ children }: { children: React.ReactNode }) {
   };
 
   const refreshWebsites = async () => {
+    if (user && workplace) {
+      try {
+        setIsLoading(true);
+        const wp = await getOrCreateUserWorkplace(user.uid, user.email || '');
+        setWorkplace(wp);
+        setWebsites([wp.websiteConfig]);
+      } catch (err) {
+        console.error('Error refreshing Firestore workplace website:', err);
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
     try {
       setIsLoading(true);
       const res = await fetch(`/api/v1/website?websiteId=${currentSiteId}`);
@@ -112,6 +153,12 @@ export function WebsiteProvider({ children }: { children: React.ReactNode }) {
   };
 
   const createWebsite = async (name: string, domain: string): Promise<WebsiteConfig | null> => {
+    // 1 website per workplace rule: update existing workplace website or create/update in Firestore
+    if (workplace) {
+      const updated = await updateWebsite({ name, domain, allowedDomains: [domain, 'localhost', '127.0.0.1'] });
+      return updated;
+    }
+
     try {
       const newId = `site_${Date.now()}`;
       const newSite: WebsiteConfig = {
@@ -141,6 +188,35 @@ export function WebsiteProvider({ children }: { children: React.ReactNode }) {
     return null;
   };
 
+  const updateWebsite = async (updates: Partial<WebsiteConfig>): Promise<WebsiteConfig | null> => {
+    if (workplace) {
+      const updatedConfig = await updateWorkplaceWebsiteInFirestore(workplace.id, updates);
+      if (updatedConfig) {
+        setWorkplace({ ...workplace, websiteConfig: updatedConfig });
+        setWebsites([updatedConfig]);
+        return updatedConfig;
+      }
+    }
+
+    try {
+      const res = await fetch('/api/v1/website', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: currentSiteId, ...updates }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.website) {
+          setWebsites((prev) => prev.map((w) => (w.id === currentSiteId ? data.website : w)));
+          return data.website;
+        }
+      }
+    } catch (err) {
+      console.error('Error updating website config:', err);
+    }
+    return null;
+  };
+
   const currentSite = websites.find((w) => w.id === currentSiteId) || websites[0] || defaultSite;
 
   return (
@@ -151,8 +227,10 @@ export function WebsiteProvider({ children }: { children: React.ReactNode }) {
         currentSiteId,
         setCurrentSiteId,
         isLoading,
+        workplace,
         refreshWebsites,
         createWebsite,
+        updateWebsite,
       }}
     >
       {children}

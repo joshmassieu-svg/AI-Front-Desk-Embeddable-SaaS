@@ -41,7 +41,7 @@ import { Plus } from 'lucide-react';
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { websites, currentSite, currentSiteId, setCurrentSiteId, createWebsite } = useWebsite();
+  const { websites, currentSite, currentSiteId, setCurrentSiteId, createWebsite, workplace } = useWebsite();
   const { user, logout } = useAuth();
   const [showNewSiteModal, setShowNewSiteModal] = useState(false);
   const [newSiteName, setNewSiteName] = useState('');
@@ -78,16 +78,16 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
 
-          {/* Website Switcher Dropdown */}
+          {/* Website Switcher / Workplace Display */}
           <div className="p-4 border-b border-slate-800/50 space-y-2">
             <div className="flex items-center justify-between text-[11px] font-semibold tracking-wider text-slate-400 uppercase">
-              <span>Active Website</span>
+              <span>{workplace ? 'Your Workplace Website' : 'Active Website'}</span>
               <button
                 onClick={() => setShowNewSiteModal(true)}
                 className="text-brand-400 hover:text-brand-300 flex items-center gap-0.5 font-bold cursor-pointer"
-                title="Add New Website Workspace"
+                title="Configure Workplace Website"
               >
-                <Plus className="w-3 h-3" /> New
+                <Plus className="w-3 h-3" /> Edit
               </button>
             </div>
             <div className="relative">
