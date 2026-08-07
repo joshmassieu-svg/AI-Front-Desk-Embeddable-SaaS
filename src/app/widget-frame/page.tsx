@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { WebsiteConfig } from '@/lib/types';
 
 interface Message {
   id: string;
@@ -8,53 +10,156 @@ interface Message {
   text: string;
 }
 
-export default function WidgetFrame() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      sender: 'agent',
-      text: 'Hi! What would you like to know about Handhold?',
-    },
-  ]);
+function WidgetFrameContent() {
+  const searchParams = useSearchParams();
+  const siteId = searchParams.get('siteId') || searchParams.get('websiteId') || 'site_default';
 
+  const [config, setConfig] = useState<WebsiteConfig | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputQuery, setInputQuery] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const initialHandledRef = useRef(false);
+  const conversationIdRef = useRef<string | null>(null);
 
-  const suggestions = [
-    'What types of AI agents exist?',
-    'How does the platform work?',
-    'Pricing plans',
-  ];
+  // Fetch dynamic website configuration
+  useEffect(() => {
+    if (!siteId) return;
+    fetch(`/api/v1/widget/config?siteId=${encodeURIComponent(siteId)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && !data.error) {
+          setConfig(data);
+          setMessages([
+            {
+              id: 'init_welcome',
+              sender: 'agent',
+              text: data.welcomeMessage || `👋 Welcome! How can I assist you today?`,
+            },
+          ]);
+        } else {
+          setMessages([
+            {
+              id: 'init_welcome_default',
+              sender: 'agent',
+              text: `👋 Welcome! How can I assist you today?`,
+            },
+          ]);
+        }
+      })
+      .catch((err) => {
+        console.error('Error loading widget config:', err);
+        setMessages([
+          {
+            id: 'init_welcome_err',
+            sender: 'agent',
+            text: `👋 Welcome! How can I assist you today?`,
+          },
+        ]);
+      });
+  }, [siteId]);
+
+  const suggestions = config?.suggestedQuestions && config.suggestedQuestions.length > 0
+    ? config.suggestedQuestions
+    : ['What features do you offer?', 'Pricing & Plans', 'How to contact support?'];
+
+  const botName = config?.botName || 'AI Assistant';
+  const siteName = config?.name || 'AI Assistant Platform';
+  const primaryColor = config?.primaryColor || '#536df4';
 
   const handleClose = () => {
     window.parent.postMessage({ type: 'ai-widget-close' }, '*');
   };
 
-  const handleSend = (textToSend?: string) => {
+  const handleSend = async (textToSend?: string) => {
     const query = textToSend || inputQuery;
-    if (!query.trim()) return;
+    if (!query.trim() || isTyping) return;
 
-    const userMsg: Message = { id: Date.now().toString(), sender: 'user', text: query };
+    const userMsg: Message = { id: Date.now().toString(), sender: 'user', text: query.trim() };
     setMessages((prev) => [...prev, userMsg]);
     if (!textToSend) setInputQuery('');
 
-    // Simulated AI response delay
-    setTimeout(() => {
-      const agentMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        sender: 'agent',
-        text: `I'm here whenever you have a question about Handhold.`,
-      };
-      setMessages((prev) => [...prev, agentMsg]);
-    }, 600);
+    setIsTyping(true);
+
+    try {
+      const response = await fetch('/api/v1/chat/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          websiteId: siteId,
+          message: query.trim(),
+          conversationId: conversationIdRef.current,
+        }),
+      });
+
+      if (!response.ok || !response.body) {
+        throw new Error('Failed to stream response');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let aiText = '';
+      const agentMsgId = (Date.now() + 1).toString();
+
+      // Add placeholder agent message
+      setMessages((prev) => [...prev, { id: agentMsgId, sender: 'agent', text: '' }]);
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const payload = JSON.parse(line.replace('data: ', ''));
+              if (payload.conversationId) {
+                conversationIdRef.current = payload.conversationId;
+              }
+              if (payload.chunk) {
+                aiText += payload.chunk;
+                setMessages((prev) =>
+                  prev.map((msg) => (msg.id === agentMsgId ? { ...msg, text: aiText } : msg))
+                );
+              }
+            } catch (e) {
+              // Ignore partial chunk parse errors
+            }
+          }
+        }
+      }
+
+      if (!aiText) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === agentMsgId
+              ? { ...msg, text: `Thank you for your question! How else can I assist you with ${siteName}?` }
+              : msg
+          )
+        );
+      }
+    } catch (err) {
+      console.error('Chat stream error:', err);
+      // Fallback agent message
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: (Date.now() + 1).toString(),
+          sender: 'agent',
+          text: `Thank you for reaching out! I am here to help you with ${siteName}.`,
+        },
+      ]);
+    } finally {
+      setIsTyping(false);
+    }
   };
 
-  // Receive search queries submitted through the launcher bar
+  // Receive search queries submitted through launcher bar or URL
   useEffect(() => {
     if (!initialHandledRef.current) {
-      const params = new URLSearchParams(window.location.search);
-      const initialQuery = params.get('initialQuery');
+      const initialQuery = searchParams.get('initialQuery');
       if (initialQuery && initialQuery.trim()) {
         initialHandledRef.current = true;
         handleSend(initialQuery.trim());
@@ -69,12 +174,12 @@ export default function WidgetFrame() {
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, []);
+  }, [searchParams]);
 
   // Auto-scroll chat window to bottom
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, isTyping]);
 
   return (
     <>
@@ -109,13 +214,13 @@ export default function WidgetFrame() {
           }
         }
 
-        /* CARD 1: MAIN CHAT CONTAINER */
+        /* MAIN CHAT CONTAINER */
         .chat-card {
           flex: 1;
           background: #ffffff;
-          border-radius: 28px;
-          box-shadow: 0 12px 32px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
-          border: 1px solid rgba(0,0,0,0.06);
+          border-radius: 24px;
+          box-shadow: 0 12px 32px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.06);
+          border: 1px solid rgba(0,0,0,0.08);
           display: flex;
           flex-direction: column;
           overflow: hidden;
@@ -128,6 +233,7 @@ export default function WidgetFrame() {
           justify-content: space-between;
           padding: 16px 20px;
           background: #ffffff;
+          border-b: 1px solid #f1f5f9;
         }
         .agent-info {
           display: flex;
@@ -135,47 +241,60 @@ export default function WidgetFrame() {
           gap: 10px;
         }
         .agent-avatar {
-          width: 32px;
-          height: 32px;
+          width: 34px;
+          height: 34px;
           border-radius: 50%;
-          background: linear-gradient(135deg, #a8ff78 0%, #78ffd6 100%);
+          background: ${primaryColor};
+          color: #ffffff;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 14px;
+          font-size: 15px;
+          font-weight: 600;
+          overflow: hidden;
+        }
+        .agent-avatar img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
         }
         .agent-names {
           display: flex;
-          align-items: baseline;
-          gap: 6px;
+          flex-direction: column;
         }
         .agent-name {
           font-weight: 600;
           font-size: 15px;
           color: #0f172a;
+          line-height: 1.2;
         }
         .agent-title {
-          font-size: 13px;
-          color: #94a3b8;
+          font-size: 12px;
+          color: #64748b;
           font-weight: 400;
         }
         .close-btn {
           background: transparent;
           border: none;
           cursor: pointer;
-          color: #0f172a;
-          padding: 4px;
+          color: #64748b;
+          padding: 6px;
           display: flex;
           align-items: center;
           justify-content: center;
           border-radius: 50%;
+          transition: background 0.15s ease;
+        }
+        .close-btn:hover {
+          background: #f1f5f9;
+          color: #0f172a;
         }
 
         /* MESSAGES BODY */
         .chat-messages {
           flex: 1;
           overflow-y: auto;
-          padding: 12px 20px;
+          padding: 16px 20px;
           display: flex;
           flex-direction: column;
           gap: 12px;
@@ -188,52 +307,70 @@ export default function WidgetFrame() {
         .message-row.agent { justify-content: flex-start; }
 
         .bubble {
-          max-width: 82%;
+          max-width: 85%;
           padding: 12px 16px;
           font-size: 14px;
           line-height: 1.45;
-          border-radius: 20px;
+          border-radius: 18px;
+          word-break: break-word;
         }
         .bubble.user {
-          background: #3b3d40;
+          background: ${primaryColor};
           color: #ffffff;
-          border-bottom-right-radius: 6px;
+          border-bottom-right-radius: 4px;
         }
         .bubble.agent {
-          background: transparent;
+          background: #f1f5f9;
           color: #0f172a;
-          padding-left: 0;
+          border-bottom-left-radius: 4px;
+        }
+
+        .typing-dots {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          padding: 12px 16px;
+          background: #f1f5f9;
+          border-radius: 18px;
+          width: max-content;
+        }
+        .typing-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #94a3b8;
+          animation: typingBlink 1.4s infinite ease-in-out both;
+        }
+        .typing-dot:nth-child(1) { animation-delay: 0s; }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typingBlink {
+          0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+          40% { transform: scale(1); opacity: 1; }
         }
 
         /* FOOTER BRANDING */
         .chat-footer {
-          padding: 12px 20px;
-          text-align: left;
+          padding: 10px 20px;
+          text-align: center;
+          border-t: 1px solid #f8fafc;
         }
         .powered-by {
           font-size: 11px;
           color: #94a3b8;
           display: flex;
           align-items: center;
+          justify-content: center;
           gap: 4px;
-          margin-bottom: 4px;
-        }
-        .privacy-note {
-          font-size: 10px;
-          color: #cbd5e1;
-          line-height: 1.3;
-        }
-        .privacy-note a {
-          color: #94a3b8;
-          text-decoration: underline;
         }
 
-        /* CARD 2: BOTTOM INPUT DOCK */
+        /* BOTTOM INPUT DOCK */
         .input-dock {
           background: #ffffff;
-          border-radius: 28px;
-          box-shadow: 0 12px 32px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
-          border: 1px solid rgba(0,0,0,0.06);
+          border-radius: 24px;
+          box-shadow: 0 12px 32px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.06);
+          border: 1px solid rgba(0,0,0,0.08);
           padding: 10px 12px;
           display: flex;
           flex-direction: column;
@@ -256,11 +393,11 @@ export default function WidgetFrame() {
           border-radius: 18px;
           padding: 8px 14px;
           font-size: 13px;
-          color: #1e293b;
+          color: #334155;
           cursor: pointer;
           transition: background 0.15s ease;
         }
-        .chip:hover { background: #f1f5f9; }
+        .chip:hover { background: #f1f5f9; color: #0f172a; }
 
         /* INPUT FIELD */
         .input-wrapper {
@@ -279,8 +416,8 @@ export default function WidgetFrame() {
         }
         .input-wrapper input::placeholder { color: #94a3b8; }
         .send-btn {
-          width: 32px;
-          height: 32px;
+          width: 34px;
+          height: 34px;
           border-radius: 50%;
           background: #e2e8f0;
           border: none;
@@ -293,7 +430,7 @@ export default function WidgetFrame() {
           transition: all 0.15s ease;
         }
         .send-btn.active {
-          background: #0f172a;
+          background: ${primaryColor};
           color: #ffffff;
         }
       `}</style>
@@ -303,13 +440,19 @@ export default function WidgetFrame() {
         <div className="chat-card">
           <div className="chat-header">
             <div className="agent-info">
-              <div className="agent-avatar">✨</div>
+              <div className="agent-avatar">
+                {config?.botAvatar ? (
+                  <img src={config.botAvatar} alt={botName} />
+                ) : (
+                  '✨'
+                )}
+              </div>
               <div className="agent-names">
-                <span className="agent-name">Holly</span>
-                <span className="agent-title">Inbound Q&A agent</span>
+                <span className="agent-name">{botName}</span>
+                <span className="agent-title">{siteName} Assistant</span>
               </div>
             </div>
-            <button className="close-btn" onClick={handleClose}>
+            <button className="close-btn" onClick={handleClose} title="Close Assistant">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />
@@ -323,15 +466,21 @@ export default function WidgetFrame() {
                 <div className={`bubble ${msg.sender}`}>{msg.text}</div>
               </div>
             ))}
+            {isTyping && (
+              <div className="message-row agent">
+                <div className="typing-dots">
+                  <div className="typing-dot" />
+                  <div className="typing-dot" />
+                  <div className="typing-dot" />
+                </div>
+              </div>
+            )}
             <div ref={chatEndRef} />
           </div>
 
           <div className="chat-footer">
             <div className="powered-by">
-              powered by <strong>handhold</strong>
-            </div>
-            <div className="privacy-note">
-              AI can sometimes make mistakes. By continuing, you agree to our <a href="#">Privacy Policy</a>
+              Powered by <strong>{siteName}</strong>
             </div>
           </div>
         </div>
@@ -349,7 +498,7 @@ export default function WidgetFrame() {
           <div className="input-wrapper">
             <input
               type="text"
-              placeholder="Ask me anything..."
+              placeholder={config?.launcherPlaceholder || 'Ask me anything...'}
               value={inputQuery}
               onChange={(e) => setInputQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
@@ -367,5 +516,13 @@ export default function WidgetFrame() {
         </div>
       </div>
     </>
+  );
+}
+
+export default function WidgetFrame() {
+  return (
+    <Suspense fallback={<div style={{ color: '#94a3b8', padding: 16, fontSize: 13 }}>Loading AI Assistant...</div>}>
+      <WidgetFrameContent />
+    </Suspense>
   );
 }
