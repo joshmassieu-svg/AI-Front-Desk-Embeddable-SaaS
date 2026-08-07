@@ -163,12 +163,13 @@ class DatabaseStore {
   }
 
   public async updateWebsiteAsync(id: string, updates: Partial<WebsiteConfig>): Promise<WebsiteConfig> {
-    const existing = this.getWebsite(id);
-    const updated = { ...(existing || {}), ...updates, updatedAt: new Date().toISOString() } as WebsiteConfig;
+    const existing = await this.getWebsiteAsync(id);
+    const updated = { ...(existing || {}), ...updates, id, updatedAt: new Date().toISOString() } as WebsiteConfig;
     this.websites.set(id, updated);
 
     try {
       await setDoc(doc(firestore, 'websites', id), updated, { merge: true });
+      await setDoc(doc(firestore, 'workplaces', id), { websiteConfig: updated, updatedAt: new Date().toISOString() }, { merge: true });
     } catch (err) {
       console.error('Error writing website to Firestore:', err);
     }

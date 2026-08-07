@@ -13,8 +13,17 @@
     return null;
   })();
 
-  var websiteId = currentScript ? (currentScript.getAttribute('data-website-id') || currentScript.getAttribute('data-site-id')) : 'site_acme_123';
-  if (!websiteId) websiteId = 'site_acme_123';
+  var websiteId = (function () {
+    if (currentScript) {
+      var id = currentScript.getAttribute('data-website-id') || currentScript.getAttribute('data-site-id');
+      if (id) return id;
+    }
+    var scripts = document.querySelectorAll('script[data-website-id], script[data-site-id]');
+    if (scripts.length > 0) {
+      return scripts[scripts.length - 1].getAttribute('data-website-id') || scripts[scripts.length - 1].getAttribute('data-site-id') || 'site_default';
+    }
+    return 'site_default';
+  })();
 
   // Determine API Origin
   var apiOrigin = (function () {

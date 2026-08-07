@@ -189,28 +189,35 @@ export function WebsiteProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateWebsite = async (updates: Partial<WebsiteConfig>): Promise<WebsiteConfig | null> => {
-    if (workplace) {
-      const updatedConfig = await updateWorkplaceWebsiteInFirestore(workplace.id, updates);
-      if (updatedConfig) {
-        setWorkplace({ ...workplace, websiteConfig: updatedConfig });
-        setWebsites([updatedConfig]);
-        return updatedConfig;
-      }
-    }
-
     try {
+      const targetId = currentSiteId || workplace?.id || 'site_default';
+
+      // 1. Save to Firestore client SDK if workplace exists
+      let updatedConfig: WebsiteConfig | null = null;
+      if (workplace) {
+        updatedConfig = await updateWorkplaceWebsiteInFirestore(workplace.id, updates);
+        if (updatedConfig) {
+          setWorkplace({ ...workplace, websiteConfig: updatedConfig });
+          setWebsites([updatedConfig]);
+        }
+      }
+
+      // 2. Always POST to API endpoint so server-side DB & Firestore sync update
       const res = await fetch('/api/v1/website', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: currentSiteId, ...updates }),
+        body: JSON.stringify({ id: targetId, ...updates }),
       });
+
       if (res.ok) {
         const data = await res.json();
         if (data && data.website) {
-          setWebsites((prev) => prev.map((w) => (w.id === currentSiteId ? data.website : w)));
+          setWebsites((prev) => prev.map((w) => (w.id === targetId ? data.website : w)));
           return data.website;
         }
       }
+
+      return updatedConfig;
     } catch (err) {
       console.error('Error updating website config:', err);
     }
