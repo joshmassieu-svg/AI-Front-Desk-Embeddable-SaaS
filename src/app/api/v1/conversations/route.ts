@@ -5,7 +5,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const websiteId = searchParams.get('websiteId') || 'site_acme_123';
 
-  const conversations = db.getConversations(websiteId);
+  const conversations = await db.getConversationsAsync(websiteId);
   return NextResponse.json({ conversations });
 }
 

@@ -10,7 +10,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       return NextResponse.json({ error: 'Message content is required' }, { status: 400 });
     }
 
-    const msg = db.addMessage(conversationId, {
+    const msg = await db.addMessageAsync(conversationId, {
       conversationId,
       sender: 'agent',
       content,

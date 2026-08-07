@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { retrieveRelevantContext } from '@/lib/rag';
+import { retrieveRelevantContextAsync } from '@/lib/rag';
 import { generateGeminiChatStream } from '@/lib/gemini';
 
 export async function POST(req: NextRequest) {
@@ -12,24 +12,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Message content required' }, { status: 400 });
     }
 
-    const website = db.getWebsite(websiteId);
+    const website = await db.getWebsiteAsync(websiteId);
     if (!website) {
       return NextResponse.json({ error: 'Website configuration not found' }, { status: 404 });
     }
 
-    // 1. Get or create conversation record
-    const conv = db.createOrGetConversation(websiteId, visitorId, { currentUrl });
+    // 1. Get or create conversation record in Firestore database
+    const conv = await db.createOrGetConversationAsync(websiteId, visitorId, { currentUrl });
     const activeConvId = conversationId || conv.id;
 
-    // Save visitor message to DB
-    db.addMessage(activeConvId, {
+    // Save visitor message to Firestore database
+    await db.addMessageAsync(activeConvId, {
       conversationId: activeConvId,
       sender: 'visitor',
       content: message,
     });
 
-    // 2. Perform RAG context retrieval
-    const { contextText, sources } = retrieveRelevantContext(websiteId, message);
+    // 2. Perform RAG context retrieval from Firestore database
+    const { contextText, sources } = await retrieveRelevantContextAsync(websiteId, message);
 
     // 3. Create ReadableStream for SSE response
     const encoder = new TextEncoder();
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
         const result = await generateGeminiChatStream({
           website,
           userQuery: message,
-          history: conv.messages,
+          history: conv.messages || [],
           knowledgeContext: contextText,
           onChunk: (chunkText) => {
             fullAiText += chunkText;
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
           }
         });
 
-        // If human handoff was triggered, update conversation status
+        // If human handoff was triggered, update conversation status in Firestore database
         if (result.shouldHandoff) {
           db.updateConversationStatus(activeConvId, 'human_requested');
           controller.enqueue(
@@ -65,8 +65,8 @@ export async function POST(req: NextRequest) {
           );
         }
 
-        // Save AI response message to DB
-        db.addMessage(activeConvId, {
+        // Save AI response message to Firestore database
+        await db.addMessageAsync(activeConvId, {
           conversationId: activeConvId,
           sender: 'ai',
           content: fullAiText || result.fullResponse,

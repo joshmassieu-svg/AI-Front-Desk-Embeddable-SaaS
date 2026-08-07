@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
 
     const { title, content } = await crawlWebpageUrl(url);
 
-    const item = db.addKnowledgeItem({
+    const item = await db.addKnowledgeItemAsync({
       websiteId,
       type: 'url',
       title: title || url,

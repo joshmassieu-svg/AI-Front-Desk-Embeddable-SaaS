@@ -5,7 +5,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const websiteId = searchParams.get('websiteId') || 'site_acme_123';
 
-  const leads = db.getLeads(websiteId);
+  const leads = await db.getLeadsAsync(websiteId);
   return NextResponse.json({ leads });
 }
 
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
 
-    const lead = db.addLead({
+    const lead = await db.addLeadAsync({
       websiteId,
       conversationId,
       name: name || 'Anonymous Visitor',

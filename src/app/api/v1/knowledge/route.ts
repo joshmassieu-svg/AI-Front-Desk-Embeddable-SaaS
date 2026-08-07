@@ -5,7 +5,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const websiteId = searchParams.get('websiteId') || 'site_acme_123';
 
-  const items = db.getKnowledgeItems(websiteId);
+  const items = await db.getKnowledgeItemsAsync(websiteId);
   return NextResponse.json({ items });
 }
 
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Title and content required' }, { status: 400 });
     }
 
-    const item = db.addKnowledgeItem({
+    const item = await db.addKnowledgeItemAsync({
       websiteId,
       type,
       title,
@@ -43,6 +43,6 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'ID required' }, { status: 400 });
   }
 
-  const success = db.deleteKnowledgeItem(id);
+  const success = await db.deleteKnowledgeItemAsync(id);
   return NextResponse.json({ success });
 }

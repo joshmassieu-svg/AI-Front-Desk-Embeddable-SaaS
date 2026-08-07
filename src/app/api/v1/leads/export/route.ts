@@ -5,7 +5,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const websiteId = searchParams.get('websiteId') || 'site_acme_123';
 
-  const leads = db.getLeads(websiteId);
+  const leads = await db.getLeadsAsync(websiteId);
 
   const header = 'ID,Name,Email,Phone,Company,Source URL,Created At\n';
   const rows = leads.map(l => 

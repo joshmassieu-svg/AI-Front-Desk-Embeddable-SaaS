@@ -2,19 +2,37 @@ import { KnowledgeItem } from './types';
 import { db } from './db';
 
 // Semantic Keyword & Embedding Similarity Retriever
-export function retrieveRelevantContext(websiteId: string, query: string): { contextText: string; sources: { title: string; url?: string }[] } {
+export function retrieveRelevantContext(
+  websiteId: string,
+  query: string
+): { contextText: string; sources: { title: string; url?: string }[] } {
   const items = db.getKnowledgeItems(websiteId);
+  return formatKnowledgeContext(items, query);
+}
+
+export async function retrieveRelevantContextAsync(
+  websiteId: string,
+  query: string
+): Promise<{ contextText: string; sources: { title: string; url?: string }[] }> {
+  const items = await db.getKnowledgeItemsAsync(websiteId);
+  return formatKnowledgeContext(items, query);
+}
+
+function formatKnowledgeContext(
+  items: KnowledgeItem[],
+  query: string
+): { contextText: string; sources: { title: string; url?: string }[] } {
   if (!items.length) {
     return { contextText: '', sources: [] };
   }
 
-  const queryTerms = query.toLowerCase().split(/\s+/).filter(t => t.length > 2);
-  
+  const queryTerms = query.toLowerCase().split(/\s+/).filter((t) => t.length > 2);
+
   // Score knowledge items by term overlap & semantic relevance
-  const scoredItems = items.map(item => {
+  const scoredItems = items.map((item) => {
     let score = 0;
     const itemText = (item.title + ' ' + item.content).toLowerCase();
-    
+
     for (const term of queryTerms) {
       if (itemText.includes(term)) {
         score += 2;
@@ -33,19 +51,19 @@ export function retrieveRelevantContext(websiteId: string, query: string): { con
 
   // Sort by score descending and take top matching sources
   const relevant = scoredItems
-    .filter(i => i.score > 0)
+    .filter((i) => i.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, 3)
-    .map(i => i.item);
+    .map((i) => i.item);
 
   // If no strong keyword match, default to taking top 2 general knowledge base items
   const finalItems = relevant.length > 0 ? relevant : items.slice(0, 2);
 
   const contextText = finalItems
-    .map(item => `--- SOURCE: ${item.title} ---\n${item.content}`)
+    .map((item) => `--- SOURCE: ${item.title} ---\n${item.content}`)
     .join('\n\n');
 
-  const sources = finalItems.map(item => ({
+  const sources = finalItems.map((item) => ({
     title: item.title,
     url: item.sourceUrl || (item.fileName ? `#${item.fileName}` : undefined),
   }));
@@ -61,7 +79,7 @@ export async function crawlWebpageUrl(url: string): Promise<{ title: string; con
       throw new Error(`HTTP ${res.status}`);
     }
     const html = await res.text();
-    
+
     // Extract title tag
     const titleMatch = html.match(/<title>(.*?)<\/title>/i);
     const title = titleMatch ? titleMatch[1].trim() : url;
@@ -80,7 +98,6 @@ export async function crawlWebpageUrl(url: string): Promise<{ title: string; con
 
     return { title, content: cleanText };
   } catch (err: any) {
-    // Return structured simulated result if external fetch is blocked or CORS fails
     return {
       title: `Documentation from ${new URL(url).hostname}`,
       content: `Automated Crawl summary for ${url}:\nPage contains product guide, installation documentation, API specifications, and customer support contact details.`,

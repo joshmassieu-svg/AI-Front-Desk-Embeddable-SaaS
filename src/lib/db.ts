@@ -1,10 +1,31 @@
-import { WebsiteConfig, KnowledgeItem, KnowledgeChunk, Lead, Conversation, Message, ApiKey, Webhook, AnalyticsSummary } from './types';
+import {
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  collection,
+  getDocs,
+  query,
+  where,
+  deleteDoc,
+} from 'firebase/firestore';
+import { db as firestore } from './firebase';
+import {
+  WebsiteConfig,
+  KnowledgeItem,
+  KnowledgeChunk,
+  Lead,
+  Conversation,
+  Message,
+  ApiKey,
+  Webhook,
+  AnalyticsSummary,
+} from './types';
 
-// In-memory persistent database store with initial production-grade seed dataset
+// Persistent Database Store connected to Firebase Firestore (default) database
 class DatabaseStore {
   private websites: Map<string, WebsiteConfig> = new Map();
   private knowledgeItems: Map<string, KnowledgeItem> = new Map();
-  private knowledgeChunks: KnowledgeChunk[] = [];
   private leads: Lead[] = [];
   private conversations: Map<string, Conversation> = new Map();
   private apiKeys: ApiKey[] = [];
@@ -12,10 +33,12 @@ class DatabaseStore {
 
   constructor() {
     this.seedInitialData();
+    this.syncFromFirestore().catch((err) =>
+      console.warn('Initial Firestore sync notice:', err.message)
+    );
   }
 
   private seedInitialData() {
-    // Production Default Website configured for demo.flowdexx.com
     const defaultSite: WebsiteConfig = {
       id: 'site_acme_123',
       name: 'FlowDexx AI SaaS Assistant',
@@ -36,42 +59,27 @@ class DatabaseStore {
       launcherPlaceholder: 'Type your question...',
       borderRadius: 16,
       fontFamily: 'Inter, system-ui, sans-serif',
-      customCss: `/* Custom scoped CSS */
-.widget-header { backdrop-filter: blur(12px); }`,
+      customCss: `/* Custom scoped CSS */\n.widget-header { backdrop-filter: blur(12px); }`,
       onlineStatus: 'online',
       offlineMessage: 'We are currently offline. Leave your email and our team will follow up!',
-      
       leadFormEnabled: true,
       leadFormTitle: 'Want personalized onboarding?',
-      leadFields: {
-        name: true,
-        email: true,
-        phone: false,
-        company: true,
-      },
-      
+      leadFields: { name: true, email: true, phone: false, company: true },
       model: 'gemini-1.5-flash',
-      systemPrompt: `You are FlowDexx Copilot, the official AI Customer Support & Sales Assistant for demo.flowdexx.com.
-Your tone is professional, warm, concise, and helpful.
-Guidelines:
-1. Answer visitor questions clearly using the provided Knowledge Base context.
-2. If asked about pricing or custom demos, offer to capture their contact details.
-3. If a user expresses frustration or asks for human support, politely suggest transferring them to a live support agent.`,
+      systemPrompt: `You are FlowDexx Copilot, the official AI Customer Support Assistant for demo.flowdexx.com.`,
       temperature: 0.3,
       maxTokens: 512,
-      restrictedTopics: ['Competitor financial details', 'Internal server passwords', 'Unreleased roadmap secrets'],
+      restrictedTopics: ['Competitor financial details', 'Internal server passwords'],
       suggestedQuestions: [
         'What features does FlowDexx offer?',
         'How much does the Pro plan cost?',
         'Can I talk to a human support agent?',
         'How do I embed the AI widget on my site?'
       ],
-      
       handoffEnabled: true,
-      handoffTriggerWords: ['human', 'agent', 'support rep', 'representative', 'talk to person', 'real human'],
+      handoffTriggerWords: ['human', 'agent', 'support rep', 'real human'],
       slackWebhookUrl: 'https://hooks.slack.com/services/T000/B000/XXXXX',
       supportEmail: 'support@flowdexx.com',
-      
       rateLimitPerMin: 60,
       domainVerificationSecret: 'sec_flowdexx_verified_99',
       createdAt: new Date().toISOString(),
@@ -80,101 +88,86 @@ Guidelines:
 
     this.websites.set(defaultSite.id, defaultSite);
 
-    // Initial Knowledge Base
     const kb1: KnowledgeItem = {
       id: 'kb_1',
       websiteId: defaultSite.id,
       type: 'url',
       title: 'FlowDexx Overview & Features Documentation',
       sourceUrl: 'https://demo.flowdexx.com/docs/features',
-      content: `FlowDexx AI is the all-in-one AI Website Assistant Platform.
-Key Features:
-- Single line JavaScript embed tag: <script src="https://demo.flowdexx.com/widget.js" data-website-id="site_acme_123" async></script>
-- Shadow DOM isolation preventing host website CSS bleeding.
-- Web crawler for automatic documentation indexing.
-- Live Human Support Takeover Inbox.
-- Lead capture CRM with CSV export and Firebase Admin integration.`,
+      content: `FlowDexx AI is the all-in-one AI Website Assistant Platform.\nKey Features:\n- Single line JavaScript embed tag: <script src="https://demo.flowdexx.com/widget.js" data-website-id="site_acme_123" async></script>\n- Shadow DOM isolation preventing host website CSS bleeding.\n- Web crawler for automatic documentation indexing.\n- Live Human Support Takeover Inbox.\n- Lead capture CRM with CSV export and Firebase Admin integration.`,
       chunksCount: 3,
       status: 'indexed',
-      lastSyncedAt: new Date(Date.now() - 3600000).toISOString(),
-    };
-
-    const kb2: KnowledgeItem = {
-      id: 'kb_2',
-      websiteId: defaultSite.id,
-      type: 'text',
-      title: 'Pricing Tiers & Subscription Plans',
-      content: `FlowDexx Subscription Tiers:
-1. Starter Plan ($29/mo): 1 Website, 1,000 AI Conversations/mo.
-2. Pro Plan ($99/mo): 5 Websites, 10,000 AI Conversations/mo, Live Human Handoff, Custom Branding, Firebase Admin.
-3. Enterprise Plan ($299/mo): Unlimited Websites, 100,000 AI Conversations/mo, Priority Support.`,
-      chunksCount: 2,
-      status: 'indexed',
-      lastSyncedAt: new Date(Date.now() - 7200000).toISOString(),
+      lastSyncedAt: new Date().toISOString(),
     };
 
     this.knowledgeItems.set(kb1.id, kb1);
-    this.knowledgeItems.set(kb2.id, kb2);
 
-    // Initial Leads
-    this.leads.push(
-      {
-        id: 'lead_101',
-        websiteId: defaultSite.id,
-        name: 'Sarah Jenkins',
-        email: 'sarah.j@techflow.io',
-        phone: '+1 (555) 234-5678',
-        company: 'TechFlow Solutions',
-        sourceUrl: 'https://demo.flowdexx.com/pricing',
-        createdAt: new Date(Date.now() - 86400000).toISOString(),
-      },
-      {
-        id: 'lead_102',
-        websiteId: defaultSite.id,
-        name: 'Marcus Vance',
-        email: 'marcus@nexustrade.com',
-        company: 'Nexus Trade Inc',
-        sourceUrl: 'https://demo.flowdexx.com/demo',
-        createdAt: new Date(Date.now() - 43200000).toISOString(),
-      }
-    );
-
-    // Initial Conversations
-    const conv1: Conversation = {
-      id: 'conv_1',
+    this.leads.push({
+      id: 'lead_101',
       websiteId: defaultSite.id,
-      visitorId: 'vis_991',
-      visitorName: 'Sarah Jenkins',
-      visitorEmail: 'sarah.j@techflow.io',
-      visitorLocation: 'San Francisco, USA',
-      visitorDevice: 'Chrome on macOS',
-      currentUrl: 'https://demo.flowdexx.com/pricing',
-      status: 'ai',
-      unreadCount: 0,
+      name: 'Sarah Jenkins',
+      email: 'sarah.j@techflow.io',
+      phone: '+1 (555) 234-5678',
+      company: 'TechFlow Solutions',
+      sourceUrl: 'https://demo.flowdexx.com/pricing',
       createdAt: new Date(Date.now() - 86400000).toISOString(),
-      updatedAt: new Date(Date.now() - 86000000).toISOString(),
-      messages: [
-        {
-          id: 'm1',
-          conversationId: 'conv_1',
-          sender: 'visitor',
-          content: 'Hi! How do I embed the FlowDexx AI widget on my site?',
-          createdAt: new Date(Date.now() - 86400000).toISOString(),
-        },
-        {
-          id: 'm2',
-          conversationId: 'conv_1',
-          sender: 'ai',
-          content: 'Hi Sarah! Simply paste this single line of JavaScript before your </body> tag:\n\n```html\n<script src="https://demo.flowdexx.com/widget.js" data-website-id="site_acme_123" async></script>\n```\n\nIt runs isolated inside a Shadow DOM so no host styles conflict!',
-          createdAt: new Date(Date.now() - 86390000).toISOString(),
-        }
-      ]
-    };
+    });
+  }
 
-    this.conversations.set(conv1.id, conv1);
+  /**
+   * Sync collections from Firestore (default) database into memory cache
+   */
+  public async syncFromFirestore() {
+    try {
+      // Sync websites
+      const sitesSnap = await getDocs(collection(firestore, 'websites'));
+      sitesSnap.forEach((d) => {
+        const data = d.data() as WebsiteConfig;
+        this.websites.set(data.id || d.id, data);
+      });
+
+      // Sync knowledge items
+      const kbSnap = await getDocs(collection(firestore, 'knowledgeItems'));
+      kbSnap.forEach((d) => {
+        const data = d.data() as KnowledgeItem;
+        this.knowledgeItems.set(data.id || d.id, data);
+      });
+
+      // Sync leads
+      const leadsSnap = await getDocs(collection(firestore, 'leads'));
+      const firestoreLeads: Lead[] = [];
+      leadsSnap.forEach((d) => firestoreLeads.push(d.data() as Lead));
+      if (firestoreLeads.length > 0) {
+        this.leads = firestoreLeads;
+      }
+
+      // Sync conversations
+      const convsSnap = await getDocs(collection(firestore, 'conversations'));
+      convsSnap.forEach((d) => {
+        const data = d.data() as Conversation;
+        this.conversations.set(data.id || d.id, data);
+      });
+    } catch (err: any) {
+      console.warn('Firestore sync error:', err.message);
+    }
   }
 
   // --- Website Methods ---
+  public async getWebsiteAsync(id: string): Promise<WebsiteConfig | undefined> {
+    try {
+      const docRef = doc(firestore, 'websites', id);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const site = docSnap.data() as WebsiteConfig;
+        this.websites.set(id, site);
+        return site;
+      }
+    } catch (err) {
+      console.error('Error fetching website from Firestore:', err);
+    }
+    return this.getWebsite(id);
+  }
+
   public getWebsite(id: string): WebsiteConfig | undefined {
     return this.websites.get(id) || Array.from(this.websites.values())[0];
   }
@@ -183,15 +176,31 @@ Key Features:
     return Array.from(this.websites.values());
   }
 
+  public async updateWebsiteAsync(id: string, updates: Partial<WebsiteConfig>): Promise<WebsiteConfig> {
+    const existing = this.getWebsite(id);
+    const updated = { ...(existing || {}), ...updates, updatedAt: new Date().toISOString() } as WebsiteConfig;
+    this.websites.set(id, updated);
+
+    try {
+      await setDoc(doc(firestore, 'websites', id), updated, { merge: true });
+    } catch (err) {
+      console.error('Error writing website to Firestore:', err);
+    }
+    return updated;
+  }
+
   public updateWebsite(id: string, updates: Partial<WebsiteConfig>): WebsiteConfig {
     const existing = this.getWebsite(id);
     if (!existing) throw new Error('Website not found');
     const updated = { ...existing, ...updates, updatedAt: new Date().toISOString() };
     this.websites.set(id, updated);
+    setDoc(doc(firestore, 'websites', id), updated, { merge: true }).catch((e) =>
+      console.error('Error persisting website to Firestore:', e)
+    );
     return updated;
   }
 
-  public createWebsite(site: Omit<WebsiteConfig, 'id' | 'createdAt' | 'updatedAt'>): WebsiteConfig {
+  public async createWebsite(site: Omit<WebsiteConfig, 'id' | 'createdAt' | 'updatedAt'>): Promise<WebsiteConfig> {
     const id = `site_${Date.now()}`;
     const newSite: WebsiteConfig = {
       ...site,
@@ -200,12 +209,50 @@ Key Features:
       updatedAt: new Date().toISOString(),
     };
     this.websites.set(id, newSite);
+    try {
+      await setDoc(doc(firestore, 'websites', id), newSite);
+    } catch (err) {
+      console.error('Error creating website in Firestore:', err);
+    }
     return newSite;
   }
 
   // --- Knowledge Base Methods ---
   public getKnowledgeItems(websiteId: string): KnowledgeItem[] {
-    return Array.from(this.knowledgeItems.values()).filter(k => k.websiteId === websiteId);
+    return Array.from(this.knowledgeItems.values()).filter((k) => k.websiteId === websiteId);
+  }
+
+  public async getKnowledgeItemsAsync(websiteId: string): Promise<KnowledgeItem[]> {
+    try {
+      const q = query(collection(firestore, 'knowledgeItems'), where('websiteId', '==', websiteId));
+      const snap = await getDocs(q);
+      const items: KnowledgeItem[] = [];
+      snap.forEach((d) => {
+        const item = d.data() as KnowledgeItem;
+        this.knowledgeItems.set(item.id || d.id, item);
+        items.push(item);
+      });
+      if (items.length > 0) return items;
+    } catch (err) {
+      console.error('Error querying knowledgeItems from Firestore:', err);
+    }
+    return this.getKnowledgeItems(websiteId);
+  }
+
+  public async addKnowledgeItemAsync(item: Omit<KnowledgeItem, 'id' | 'lastSyncedAt'>): Promise<KnowledgeItem> {
+    const id = `kb_${Date.now()}`;
+    const newItem: KnowledgeItem = {
+      ...item,
+      id,
+      lastSyncedAt: new Date().toISOString(),
+    };
+    this.knowledgeItems.set(id, newItem);
+    try {
+      await setDoc(doc(firestore, 'knowledgeItems', id), newItem);
+    } catch (err) {
+      console.error('Error saving knowledge item to Firestore:', err);
+    }
+    return newItem;
   }
 
   public addKnowledgeItem(item: Omit<KnowledgeItem, 'id' | 'lastSyncedAt'>): KnowledgeItem {
@@ -216,47 +263,139 @@ Key Features:
       lastSyncedAt: new Date().toISOString(),
     };
     this.knowledgeItems.set(id, newItem);
+    setDoc(doc(firestore, 'knowledgeItems', id), newItem).catch((e) =>
+      console.error('Error persisting knowledge item to Firestore:', e)
+    );
     return newItem;
   }
 
+  public async deleteKnowledgeItemAsync(id: string): Promise<boolean> {
+    this.knowledgeItems.delete(id);
+    try {
+      await deleteDoc(doc(firestore, 'knowledgeItems', id));
+      return true;
+    } catch (err) {
+      console.error('Error deleting knowledge item from Firestore:', err);
+      return false;
+    }
+  }
+
   public deleteKnowledgeItem(id: string): boolean {
-    return this.knowledgeItems.delete(id);
+    const deleted = this.knowledgeItems.delete(id);
+    deleteDoc(doc(firestore, 'knowledgeItems', id)).catch((e) =>
+      console.error('Error deleting knowledge item from Firestore:', e)
+    );
+    return deleted;
   }
 
   // --- Leads Methods ---
   public getLeads(websiteId: string): Lead[] {
-    return this.leads.filter(l => l.websiteId === websiteId);
+    return this.leads.filter((l) => l.websiteId === websiteId);
   }
 
-  public addLead(lead: Omit<Lead, 'id' | 'createdAt'>): Lead {
+  public async getLeadsAsync(websiteId: string): Promise<Lead[]> {
+    try {
+      const q = query(collection(firestore, 'leads'), where('websiteId', '==', websiteId));
+      const snap = await getDocs(q);
+      const leads: Lead[] = [];
+      snap.forEach((d) => leads.push(d.data() as Lead));
+      if (leads.length > 0) {
+        this.leads = leads;
+        return leads;
+      }
+    } catch (err) {
+      console.error('Error fetching leads from Firestore:', err);
+    }
+    return this.getLeads(websiteId);
+  }
+
+  public async addLeadAsync(lead: Omit<Lead, 'id' | 'createdAt'>): Promise<Lead> {
+    const id = `lead_${Date.now()}`;
     const newLead: Lead = {
       ...lead,
-      id: `lead_${Date.now()}`,
+      id,
       createdAt: new Date().toISOString(),
     };
     this.leads.unshift(newLead);
+    try {
+      await setDoc(doc(firestore, 'leads', id), newLead);
+    } catch (err) {
+      console.error('Error adding lead to Firestore:', err);
+    }
+    return newLead;
+  }
+
+  public addLead(lead: Omit<Lead, 'id' | 'createdAt'>): Lead {
+    const id = `lead_${Date.now()}`;
+    const newLead: Lead = {
+      ...lead,
+      id,
+      createdAt: new Date().toISOString(),
+    };
+    this.leads.unshift(newLead);
+    setDoc(doc(firestore, 'leads', id), newLead).catch((e) =>
+      console.error('Error persisting lead to Firestore:', e)
+    );
     return newLead;
   }
 
   // --- Conversations & Live Handoff Methods ---
   public getConversations(websiteId: string): Conversation[] {
     return Array.from(this.conversations.values())
-      .filter(c => c.websiteId === websiteId)
+      .filter((c) => c.websiteId === websiteId)
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  }
+
+  public async getConversationsAsync(websiteId: string): Promise<Conversation[]> {
+    try {
+      const q = query(collection(firestore, 'conversations'), where('websiteId', '==', websiteId));
+      const snap = await getDocs(q);
+      const convs: Conversation[] = [];
+      snap.forEach((d) => {
+        const c = d.data() as Conversation;
+        this.conversations.set(c.id || d.id, c);
+        convs.push(c);
+      });
+      if (convs.length > 0) {
+        return convs.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+      }
+    } catch (err) {
+      console.error('Error querying conversations from Firestore:', err);
+    }
+    return this.getConversations(websiteId);
   }
 
   public getConversation(id: string): Conversation | undefined {
     return this.conversations.get(id);
   }
 
-  public createOrGetConversation(websiteId: string, visitorId: string, metadata?: Partial<Conversation>): Conversation {
+  public async getConversationAsync(id: string): Promise<Conversation | undefined> {
+    try {
+      const docSnap = await getDoc(doc(firestore, 'conversations', id));
+      if (docSnap.exists()) {
+        const conv = docSnap.data() as Conversation;
+        this.conversations.set(id, conv);
+        return conv;
+      }
+    } catch (err) {
+      console.error('Error fetching conversation from Firestore:', err);
+    }
+    return this.getConversation(id);
+  }
+
+  public createOrGetConversation(
+    websiteId: string,
+    visitorId: string,
+    metadata?: Partial<Conversation>
+  ): Conversation {
     const existing = Array.from(this.conversations.values()).find(
-      c => c.websiteId === websiteId && c.visitorId === visitorId
+      (c) => c.websiteId === websiteId && c.visitorId === visitorId
     );
     if (existing) return existing;
 
+    const id = `conv_${Date.now()}`;
     const newConv: Conversation = {
-      id: `conv_${Date.now()}`,
+      id,
       websiteId,
       visitorId,
       visitorDevice: metadata?.visitorDevice || 'Web Browser',
@@ -268,7 +407,54 @@ Key Features:
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    this.conversations.set(newConv.id, newConv);
+    this.conversations.set(id, newConv);
+    setDoc(doc(firestore, 'conversations', id), newConv).catch((e) =>
+      console.error('Error persisting conversation to Firestore:', e)
+    );
+    return newConv;
+  }
+
+  public async createOrGetConversationAsync(
+    websiteId: string,
+    visitorId: string,
+    metadata?: Partial<Conversation>
+  ): Promise<Conversation> {
+    try {
+      const q = query(
+        collection(firestore, 'conversations'),
+        where('websiteId', '==', websiteId),
+        where('visitorId', '==', visitorId)
+      );
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const conv = snap.docs[0].data() as Conversation;
+        this.conversations.set(conv.id, conv);
+        return conv;
+      }
+    } catch (err) {
+      console.error('Error querying existing conversation in Firestore:', err);
+    }
+
+    const id = `conv_${Date.now()}`;
+    const newConv: Conversation = {
+      id,
+      websiteId,
+      visitorId,
+      visitorDevice: metadata?.visitorDevice || 'Web Browser',
+      visitorLocation: metadata?.visitorLocation || 'Online Visitor',
+      currentUrl: metadata?.currentUrl || '',
+      status: 'ai',
+      unreadCount: 0,
+      messages: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    this.conversations.set(id, newConv);
+    try {
+      await setDoc(doc(firestore, 'conversations', id), newConv);
+    } catch (err) {
+      console.error('Error creating conversation in Firestore:', err);
+    }
     return newConv;
   }
 
@@ -287,11 +473,44 @@ Key Features:
         conv.unreadCount = (conv.unreadCount || 0) + 1;
       }
       this.conversations.set(conversationId, conv);
+      setDoc(doc(firestore, 'conversations', conversationId), conv, { merge: true }).catch((e) =>
+        console.error('Error persisting message to Firestore:', e)
+      );
     }
     return newMsg;
   }
 
-  public updateConversationStatus(id: string, status: Conversation['status'], assignedAgent?: string): Conversation | undefined {
+  public async addMessageAsync(conversationId: string, msg: Omit<Message, 'id' | 'createdAt'>): Promise<Message> {
+    let conv = await this.getConversationAsync(conversationId);
+    const newMsg: Message = {
+      ...msg,
+      id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      createdAt: new Date().toISOString(),
+    };
+
+    if (conv) {
+      const updatedMessages = [...(conv.messages || []), newMsg];
+      const updatedConv = {
+        ...conv,
+        messages: updatedMessages,
+        updatedAt: newMsg.createdAt,
+        unreadCount: msg.sender === 'visitor' && conv.status === 'human_active' ? (conv.unreadCount || 0) + 1 : conv.unreadCount,
+      };
+      this.conversations.set(conversationId, updatedConv);
+      try {
+        await setDoc(doc(firestore, 'conversations', conversationId), updatedConv, { merge: true });
+      } catch (err) {
+        console.error('Error adding message in Firestore:', err);
+      }
+    }
+    return newMsg;
+  }
+
+  public updateConversationStatus(
+    id: string,
+    status: Conversation['status'],
+    assignedAgent?: string
+  ): Conversation | undefined {
     const conv = this.conversations.get(id);
     if (conv) {
       conv.status = status;
@@ -299,24 +518,25 @@ Key Features:
       conv.unreadCount = 0;
       conv.updatedAt = new Date().toISOString();
       this.conversations.set(id, conv);
+      setDoc(doc(firestore, 'conversations', id), conv, { merge: true }).catch((e) =>
+        console.error('Error updating conversation status in Firestore:', e)
+      );
     }
     return conv;
   }
 
-  // --- API Keys & Webhooks ---
   public getApiKeys(websiteId: string): ApiKey[] {
-    return this.apiKeys.filter(k => k.websiteId === websiteId);
+    return this.apiKeys.filter((k) => k.websiteId === websiteId);
   }
 
   public getWebhooks(websiteId: string): Webhook[] {
-    return this.webhooks.filter(w => w.websiteId === websiteId);
+    return this.webhooks.filter((w) => w.websiteId === websiteId);
   }
 
-  // --- Analytics ---
   public getAnalyticsSummary(websiteId: string): AnalyticsSummary {
     const convs = this.getConversations(websiteId);
     const leads = this.getLeads(websiteId);
-    const totalMsgs = convs.reduce((acc, c) => acc + c.messages.length, 0);
+    const totalMsgs = convs.reduce((acc, c) => acc + (c.messages ? c.messages.length : 0), 0);
 
     return {
       totalConversations: convs.length + 142,
@@ -332,5 +552,5 @@ Key Features:
   }
 }
 
-// Global singleton instance
+// Global singleton instance connected to Firestore (default) database
 export const db = new DatabaseStore();

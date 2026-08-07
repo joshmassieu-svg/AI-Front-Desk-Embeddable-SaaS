@@ -5,7 +5,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const siteId = searchParams.get('siteId') || searchParams.get('websiteId') || 'site_acme_123';
 
-  const website = db.getWebsite(siteId);
+  const website = await db.getWebsiteAsync(siteId);
   if (!website) {
     return NextResponse.json({ error: 'Website not found' }, { status: 404 });
   }
