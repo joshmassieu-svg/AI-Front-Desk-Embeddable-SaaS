@@ -77,8 +77,14 @@ class DatabaseStore {
 
   // --- Website Methods ---
   public async getWebsiteAsync(id: string): Promise<WebsiteConfig | undefined> {
+    if (!id) return undefined;
+
+    // 1. Check in-memory cache first
+    const cached = this.websites.get(id);
+    if (cached) return cached;
+
     try {
-      // 1. Check websites collection doc
+      // 2. Check websites collection doc
       const docRef = doc(firestore, 'websites', id);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
@@ -87,7 +93,7 @@ class DatabaseStore {
         return site;
       }
 
-      // 2. Fallback check workplaces collection doc
+      // 3. Check workplaces collection doc
       const wpRef = doc(firestore, 'workplaces', id);
       const wpSnap = await getDoc(wpRef);
       if (wpSnap.exists()) {
@@ -103,59 +109,12 @@ class DatabaseStore {
       console.error('Error fetching website from Firestore:', err);
     }
 
-    const cached = this.websites.get(id);
-    if (cached) return cached;
-
-    // 3. Dynamic initial site fallback for new site IDs
-    const fallbackSite: WebsiteConfig = {
-      id,
-      name: 'AI Front-Desk Assistant',
-      domain: 'mywebsite.com',
-      allowedDomains: ['mywebsite.com', 'localhost', '127.0.0.1'],
-      apiKey: `pk_live_${id.replace(/[^a-zA-Z0-9]/g, '')}`,
-      theme: 'dark',
-      primaryColor: '#536df4',
-      textColor: '#ffffff',
-      backgroundColor: '#0f172a',
-      position: 'bottom-right',
-      welcomeMessage: '👋 Hello! How can I assist you today?',
-      botName: 'AI Assistant',
-      botAvatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=120&h=120&q=80',
-      launcherIcon: 'sparkles',
-      launcherStyle: 'bar',
-      launcherText: 'Ask AI anything...',
-      launcherPlaceholder: 'Type your question...',
-      borderRadius: 16,
-      fontFamily: 'Inter, system-ui, sans-serif',
-      customCss: '',
-      onlineStatus: 'online',
-      offlineMessage: 'We are currently offline. Leave your email and our team will follow up!',
-      leadFormEnabled: true,
-      leadFormTitle: 'Want personalized onboarding?',
-      leadFields: { name: true, email: true, phone: false, company: true },
-      model: 'gemini-1.5-flash',
-      systemPrompt: 'You are a helpful AI customer support assistant.',
-      temperature: 0.3,
-      maxTokens: 512,
-      restrictedTopics: [],
-      suggestedQuestions: ['What services do you offer?', 'How can I contact support?'],
-      handoffEnabled: true,
-      handoffTriggerWords: ['human', 'agent', 'support rep'],
-      rateLimitPerMin: 60,
-      domainVerificationSecret: `sec_${id}_verify`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    this.websites.set(id, fallbackSite);
-    setDoc(doc(firestore, 'websites', id), fallbackSite).catch((e) =>
-      console.error('Error saving fallback site to Firestore:', e)
-    );
-    return fallbackSite;
+    return undefined;
   }
 
   public getWebsite(id: string): WebsiteConfig | undefined {
-    return this.websites.get(id) || Array.from(this.websites.values())[0];
+    if (!id) return undefined;
+    return this.websites.get(id);
   }
 
   public getAllWebsites(): WebsiteConfig[] {

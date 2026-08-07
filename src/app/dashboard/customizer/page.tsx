@@ -165,20 +165,13 @@ export default function CustomizerPage() {
   const [previewTab, setPreviewTab] = useState<'desktop' | 'mobile'>('desktop');
 
   useEffect(() => {
-    if (currentSiteId) {
-      fetch(`/api/v1/website?websiteId=${currentSiteId}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data && data.id) {
-            setConfig(prev => ({
-              ...prev,
-              ...data
-            }));
-          }
-        })
-        .catch(err => console.error(err));
+    if (currentSite && currentSite.id) {
+      setConfig(prev => ({
+        ...prev,
+        ...currentSite
+      }));
     }
-  }, [currentSiteId]);
+  }, [currentSite]);
 
   // Save handler
   const handleSave = async () => {
