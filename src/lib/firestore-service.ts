@@ -110,6 +110,8 @@ export async function getOrCreateUserWorkplace(userId: string, email: string): P
 
     // Save workplace doc in Firestore
     await setDoc(doc(db, 'workplaces', workplaceId), newWorkplace);
+    // Also save websiteConfig doc in websites collection for direct lookup
+    await setDoc(doc(db, 'websites', workplaceId), websiteConfig);
 
     // Save user profile doc in Firestore
     const newUserProfile: UserProfile = {
@@ -164,6 +166,8 @@ export async function updateWorkplaceWebsiteInFirestore(
       websiteConfig: updatedWebsiteConfig,
       updatedAt: new Date().toISOString(),
     });
+
+    await setDoc(doc(db, 'websites', workplaceId), updatedWebsiteConfig, { merge: true });
 
     return updatedWebsiteConfig;
   } catch (err) {
