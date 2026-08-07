@@ -109,10 +109,14 @@ Instructions:
     }
   }
 
-  // 3. Fallback Dynamic Intelligent Response Generator (used when GEMINI_API_KEY is not set)
+  // 3. Fallback Intelligent Response Generator (used when GEMINI_API_KEY is not set)
   let fallbackAnswer = '';
 
-  if (queryLower.includes('pricing') || queryLower.includes('cost') || queryLower.includes('plan')) {
+  if (knowledgeContext && knowledgeContext.trim().length > 0) {
+    fallbackAnswer = `Here is what I found in the Knowledge Base for **${website.name}** regarding your question:\n\n` +
+      `${knowledgeContext.substring(0, 800)}\n\n` +
+      `Is there anything else I can help clarify for you?`;
+  } else if (queryLower.includes('pricing') || queryLower.includes('cost') || queryLower.includes('plan')) {
     fallbackAnswer = `Our platform offers flexible subscription plans tailored to your needs:\n\n` +
       `- **Starter Plan ($29/mo)**: 1 Website, 1,000 AI Conversations, standard widgets.\n` +
       `- **Pro Plan ($99/mo)**: 5 Websites, 10,000 AI Conversations, Live Human Handoff, Custom Branding.\n` +
@@ -122,7 +126,7 @@ Instructions:
     fallbackAnswer = `Installing the AI Assistant on any website takes less than 2 minutes!\n\n` +
       `1. Copy your unique 1-line script snippet from your dashboard.\n` +
       `2. Paste it directly before the closing \`</body>\` tag:\n\n` +
-      `\`\`\`html\n<script src="https://platform.acme.com/widget.js" data-website-id="${website.id}" async></script>\n\`\`\`\n\n` +
+      `\`\`\`html\n<script src="${process.env.NEXT_PUBLIC_APP_URL || 'https://demo.flowdexx.com'}/widget.js" data-website-id="${website.id}" async></script>\n\`\`\`\n\n` +
       `The widget uses an isolated **Shadow DOM** to prevent any host website style conflicts.`;
   } else if (queryLower.includes('feature') || queryLower.includes('what can') || queryLower.includes('capabilities')) {
     fallbackAnswer = `Key capabilities of ${website.botName}:\n\n` +
@@ -132,9 +136,9 @@ Instructions:
       `- 🎯 **Lead Capture Forms**: Collect names, emails, phone numbers, and companies.\n` +
       `- 🎨 **Visual Customizer**: Match your brand colors, icons, and positioning.`;
   } else {
-    fallbackAnswer = `Based on our documentation for ${website.name}:\n\n` +
-      `Thank you for asking! ${website.botName} is configured to assist with website automation, live customer engagement, knowledge retrieval, and support handoffs.\n\n` +
-      `If you have specific questions regarding implementation, feel free to ask or click below to submit your email for a demo!`;
+    fallbackAnswer = `Thank you for asking! I am **${website.botName}**, the official AI Customer Support Assistant for **${website.domain}**.\n\n` +
+      `I can help you answer visitor questions, retrieve knowledge base documentation, capture sales leads, and connect you with human support agents.\n\n` +
+      `Feel free to ask any specific questions about our services or features!`;
   }
 
   // Stream fallback answer with natural typing speed
