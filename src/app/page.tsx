@@ -27,18 +27,30 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <Link
               href="/demo-embed"
-              className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white transition"
+              className="px-3.5 py-2 text-sm font-medium text-slate-300 hover:text-white transition"
             >
               Test Live Embed
             </Link>
             <Link
-              href="/dashboard/overview"
-              className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 rounded-xl shadow-glow transition flex items-center gap-2"
+              href="/login"
+              className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white transition"
             >
-              Open SaaS Dashboard <ArrowRight className="w-4 h-4" />
+              Sign In
+            </Link>
+            <Link
+              href="/signup"
+              className="px-4 py-2 text-sm font-semibold text-white bg-slate-900 border border-slate-700 hover:bg-slate-800 rounded-xl transition"
+            >
+              Sign Up
+            </Link>
+            <Link
+              href="/dashboard/overview"
+              className="px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 rounded-xl shadow-glow transition flex items-center gap-2"
+            >
+              Dashboard <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         </div>

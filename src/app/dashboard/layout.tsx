@@ -20,7 +20,9 @@ import {
   Sparkles,
   ShieldCheck,
   User,
+  LogOut,
 } from 'lucide-react';
+import { useAuth } from '@/context/auth-context';
 
 const navItems = [
   { label: 'Overview', href: '/dashboard/overview', icon: LayoutDashboard },
@@ -34,9 +36,30 @@ const navItems = [
   { label: 'Settings & Plans', href: '/dashboard/settings', icon: Settings },
 ];
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+import { WebsiteProvider, useWebsite } from '@/context/website-context';
+import { Plus } from 'lucide-react';
+
+function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [selectedSite, setSelectedSite] = useState('Acme SaaS Platform (acme.com)');
+  const { websites, currentSite, currentSiteId, setCurrentSiteId, createWebsite } = useWebsite();
+  const { user, logout } = useAuth();
+  const [showNewSiteModal, setShowNewSiteModal] = useState(false);
+  const [newSiteName, setNewSiteName] = useState('');
+  const [newSiteDomain, setNewSiteDomain] = useState('');
+
+  const handleCreateSite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSiteName.trim() || !newSiteDomain.trim()) return;
+    await createWebsite(newSiteName.trim(), newSiteDomain.trim());
+    setNewSiteName('');
+    setNewSiteDomain('');
+    setShowNewSiteModal(false);
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    window.location.href = '/login';
+  };
 
   return (
     <div className="min-h-screen bg-[#080c14] text-slate-100 flex overflow-hidden">
@@ -56,18 +79,30 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           {/* Website Switcher Dropdown */}
-          <div className="p-4 border-b border-slate-800/50">
-            <div className="text-[11px] font-semibold tracking-wider text-slate-400 uppercase mb-2">
-              Active Website
+          <div className="p-4 border-b border-slate-800/50 space-y-2">
+            <div className="flex items-center justify-between text-[11px] font-semibold tracking-wider text-slate-400 uppercase">
+              <span>Active Website</span>
+              <button
+                onClick={() => setShowNewSiteModal(true)}
+                className="text-brand-400 hover:text-brand-300 flex items-center gap-0.5 font-bold cursor-pointer"
+                title="Add New Website Workspace"
+              >
+                <Plus className="w-3 h-3" /> New
+              </button>
             </div>
             <div className="relative">
-              <button className="w-full bg-slate-900/90 border border-slate-700/70 hover:border-brand-500/50 rounded-xl px-3 py-2 text-xs font-medium text-slate-200 flex items-center justify-between transition">
-                <div className="flex items-center gap-2 truncate">
-                  <Globe className="w-3.5 h-3.5 text-brand-400 shrink-0" />
-                  <span className="truncate">{selectedSite}</span>
-                </div>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              </button>
+              <select
+                value={currentSiteId}
+                onChange={(e) => setCurrentSiteId(e.target.value)}
+                className="w-full bg-slate-900/90 border border-slate-700/70 hover:border-brand-500/50 rounded-xl px-3 py-2 text-xs font-medium text-slate-200 focus:outline-none focus:border-brand-500 cursor-pointer appearance-none"
+              >
+                {websites.map((site) => (
+                  <option key={site.id} value={site.id} className="bg-slate-900 text-slate-100">
+                    {site.name} ({site.domain})
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-3 pointer-events-none" />
             </div>
           </div>
 
@@ -126,7 +161,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {navItems.find((n) => n.href === pathname)?.label || 'Dashboard'}
             </h1>
             <span className="text-slate-600">/</span>
-            <span className="text-xs text-slate-400">site_acme_123</span>
+            <span className="text-xs text-brand-300 font-mono font-medium px-2 py-0.5 rounded bg-brand-500/10 border border-brand-500/20">
+              {currentSite?.id || currentSiteId}
+            </span>
           </div>
 
           <div className="flex items-center gap-4">
@@ -137,12 +174,33 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             <div className="flex items-center gap-3 border-l border-slate-800 pl-4">
               <div className="w-8 h-8 rounded-full bg-brand-500/20 border border-brand-500/40 flex items-center justify-center text-brand-300 font-bold text-xs">
-                SJ
+                {user?.email ? user.email.charAt(0).toUpperCase() : 'U'}
               </div>
               <div className="text-xs hidden md:block">
-                <div className="font-semibold text-slate-200">Sarah Jenkins</div>
-                <div className="text-slate-500">Admin</div>
+                <div className="font-semibold text-slate-200 truncate max-w-[150px]">
+                  {user?.email || 'Guest User'}
+                </div>
+                <div className="text-slate-500">
+                  {user ? 'Authenticated' : 'Not signed in'}
+                </div>
               </div>
+
+              {user ? (
+                <button
+                  onClick={handleLogout}
+                  className="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-900 rounded-lg transition ml-1"
+                  title="Sign out"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              ) : (
+                <Link
+                  href="/login"
+                  className="text-xs px-3 py-1.5 font-medium text-white bg-brand-600 hover:bg-brand-500 rounded-lg transition ml-1"
+                >
+                  Sign In
+                </Link>
+              )}
             </div>
           </div>
         </header>
@@ -152,6 +210,75 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {children}
         </main>
       </div>
+
+      {/* Add New Website Modal */}
+      {showNewSiteModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0f172a] border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Globe className="w-4 h-4 text-brand-400" /> Create Website Workspace
+              </h3>
+              <button
+                onClick={() => setShowNewSiteModal(false)}
+                className="text-slate-400 hover:text-white text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateSite} className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">Website Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. NexusTech Store"
+                  value={newSiteName}
+                  onChange={(e) => setNewSiteName(e.target.value)}
+                  className="w-full px-3.5 py-2 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-brand-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">Primary Domain</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. nexustech.io"
+                  value={newSiteDomain}
+                  onChange={(e) => setNewSiteDomain(e.target.value)}
+                  className="w-full px-3.5 py-2 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-brand-500"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowNewSiteModal(false)}
+                  className="flex-1 py-2 text-xs font-semibold text-slate-400 bg-slate-900 hover:bg-slate-800 rounded-xl border border-slate-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2 text-xs font-bold text-white bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 rounded-xl shadow-glow"
+                >
+                  Create Workspace
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <WebsiteProvider>
+      <DashboardLayoutContent>{children}</DashboardLayoutContent>
+    </WebsiteProvider>
   );
 }

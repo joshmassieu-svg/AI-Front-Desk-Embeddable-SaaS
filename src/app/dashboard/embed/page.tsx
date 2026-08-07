@@ -1,13 +1,25 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Code2, Copy, Check, Terminal, ExternalLink, ShieldCheck, Zap } from 'lucide-react';
+import { useWebsite } from '@/context/website-context';
 
 export default function EmbedPage() {
+  const { currentSite } = useWebsite();
   const [copied, setCopied] = useState(false);
   const [activeFramework, setActiveFramework] = useState<'html' | 'nextjs' | 'react' | 'vue' | 'wordpress'>('html');
+  const [appUrl, setAppUrl] = useState('http://localhost:3000');
 
-  const snippet = `<script src="https://demo.flowdexx.com/widget.js" data-website-id="site_acme_123" async></script>`;
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setAppUrl(window.location.origin);
+    }
+  }, []);
+
+  const siteId = currentSite?.id || 'site_acme_123';
+  const domain = currentSite?.domain || 'localhost';
+
+  const snippet = `<script src="${appUrl}/widget.js" data-website-id="${siteId}" async></script>`;
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -29,7 +41,7 @@ export default function EmbedPage() {
         </div>
 
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
-          <ShieldCheck className="w-4 h-4" /> Domain Verified: demo.flowdexx.com
+          <ShieldCheck className="w-4 h-4" /> Domain: {domain}
         </div>
       </div>
 
@@ -37,7 +49,7 @@ export default function EmbedPage() {
       <div className="glass-panel p-6 rounded-2xl border border-brand-500/30 shadow-glow space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs font-bold text-slate-200">
-            <Terminal className="w-4 h-4 text-brand-400" /> Production Embed Tag (demo.flowdexx.com)
+            <Terminal className="w-4 h-4 text-brand-400" /> Production Embed Tag ({domain})
           </div>
           <button
             onClick={() => copyToClipboard(snippet)}
@@ -94,8 +106,8 @@ export default function RootLayout({ children }) {
       <body>
         {children}
         <Script
-          src="https://demo.flowdexx.com/widget.js"
-          data-website-id="site_acme_123"
+          src="${appUrl}/widget.js"
+          data-website-id="${siteId}"
           strategy="lazyOnload"
         />
       </body>
@@ -112,8 +124,8 @@ export default function RootLayout({ children }) {
             <pre className="bg-slate-950 p-4 rounded-xl text-xs font-mono text-slate-300 overflow-x-auto border border-slate-800">
 {`useEffect(() => {
   const script = document.createElement('script');
-  script.src = 'https://demo.flowdexx.com/widget.js';
-  script.setAttribute('data-website-id', 'site_acme_123');
+  script.src = '${appUrl}/widget.js';
+  script.setAttribute('data-website-id', '${siteId}');
   script.async = true;
   document.body.appendChild(script);
 }, []);`}
@@ -129,8 +141,8 @@ export default function RootLayout({ children }) {
 
 onMounted(() => {
   const script = document.createElement('script');
-  script.src = 'https://demo.flowdexx.com/widget.js';
-  script.setAttribute('data-website-id', 'site_acme_123');
+  script.src = '${appUrl}/widget.js';
+  script.setAttribute('data-website-id', '${siteId}');
   script.async = true;
   document.body.appendChild(script);
 });`}
