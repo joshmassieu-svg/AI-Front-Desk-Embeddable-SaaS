@@ -16,7 +16,7 @@ export default function EmbedPage() {
     }
   }, []);
 
-  const siteId = currentSite?.id || 'site_acme_123';
+  const siteId = currentSite?.id || '';
   const domain = currentSite?.domain || 'localhost';
 
   const snippet = `<script src="${appUrl}/widget.js" data-website-id="${siteId}" async></script>`;

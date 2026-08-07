@@ -15,17 +15,21 @@ import {
 } from 'lucide-react';
 import { Lead } from '@/lib/types';
 
+import { useWebsite } from '@/context/website-context';
+
 export default function LeadsPage() {
+  const { currentSiteId } = useWebsite();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
     fetchLeads();
-  }, []);
+  }, [currentSiteId]);
 
   const fetchLeads = async () => {
+    if (!currentSiteId) return;
     try {
-      const res = await fetch('/api/v1/leads?websiteId=site_acme_123');
+      const res = await fetch(`/api/v1/leads?websiteId=${currentSiteId}`);
       const data = await res.json();
       if (data.leads) setLeads(data.leads);
     } catch (err) {
@@ -55,7 +59,7 @@ export default function LeadsPage() {
 
         <div className="flex items-center gap-3">
           <a
-            href="/api/v1/leads/export?websiteId=site_acme_123"
+            href={`/api/v1/leads/export?websiteId=${currentSiteId}`}
             download
             className="px-4 py-2 text-xs font-bold text-white bg-purple-600 hover:bg-purple-500 rounded-xl transition shadow-glow flex items-center gap-2"
           >

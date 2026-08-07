@@ -4,19 +4,24 @@ import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Sparkles, CheckCircle2, Zap } from 'lucide-react';
 
+import { useWebsite } from '@/context/website-context';
+
 export default function DemoEmbedPage() {
+  const { currentSiteId } = useWebsite();
+
   useEffect(() => {
     // Inject widget script dynamically into host demo page on mount
+    const siteIdToUse = currentSiteId || 'site_default';
     const existing = document.getElementById('demo-widget-script');
     if (!existing) {
       const script = document.createElement('script');
       script.id = 'demo-widget-script';
       script.src = '/widget.js';
-      script.setAttribute('data-website-id', 'site_acme_123');
+      script.setAttribute('data-website-id', siteIdToUse);
       script.async = true;
       document.body.appendChild(script);
     }
-  }, []);
+  }, [currentSiteId]);
 
   return (
     <div className="min-h-screen bg-[#0a0f1d] text-slate-100 flex flex-col justify-between relative overflow-hidden">

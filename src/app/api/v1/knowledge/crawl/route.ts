@@ -4,10 +4,14 @@ import { crawlWebpageUrl } from '@/lib/rag';
 
 export async function POST(req: NextRequest) {
   try {
-    const { websiteId = 'site_acme_123', url } = await req.json();
+    const { websiteId, url } = await req.json();
 
     if (!url) {
       return NextResponse.json({ error: 'URL is required' }, { status: 400 });
+    }
+
+    if (!websiteId) {
+      return NextResponse.json({ error: 'websiteId is required' }, { status: 400 });
     }
 
     const { title, content } = await crawlWebpageUrl(url);

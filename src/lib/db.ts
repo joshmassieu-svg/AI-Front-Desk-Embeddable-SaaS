@@ -32,86 +32,9 @@ class DatabaseStore {
   private webhooks: Webhook[] = [];
 
   constructor() {
-    this.seedInitialData();
     this.syncFromFirestore().catch((err) =>
       console.warn('Initial Firestore sync notice:', err.message)
     );
-  }
-
-  private seedInitialData() {
-    const defaultSite: WebsiteConfig = {
-      id: 'site_acme_123',
-      name: 'FlowDexx AI SaaS Assistant',
-      domain: 'demo.flowdexx.com',
-      allowedDomains: ['demo.flowdexx.com', 'flowdexx.com', 'localhost', '127.0.0.1'],
-      apiKey: 'pk_live_flowdexx9876543210',
-      theme: 'dark',
-      primaryColor: '#536df4',
-      textColor: '#ffffff',
-      backgroundColor: '#0f172a',
-      position: 'bottom-right',
-      welcomeMessage: "👋 Welcome to FlowDexx AI! How can I assist you with your website assistant platform today?",
-      botName: 'FlowDexx Copilot',
-      botAvatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=120&h=120&q=80',
-      launcherIcon: 'sparkles',
-      launcherStyle: 'bar',
-      launcherText: 'Ask AI anything...',
-      launcherPlaceholder: 'Type your question...',
-      borderRadius: 16,
-      fontFamily: 'Inter, system-ui, sans-serif',
-      customCss: `/* Custom scoped CSS */\n.widget-header { backdrop-filter: blur(12px); }`,
-      onlineStatus: 'online',
-      offlineMessage: 'We are currently offline. Leave your email and our team will follow up!',
-      leadFormEnabled: true,
-      leadFormTitle: 'Want personalized onboarding?',
-      leadFields: { name: true, email: true, phone: false, company: true },
-      model: 'gemini-1.5-flash',
-      systemPrompt: `You are FlowDexx Copilot, the official AI Customer Support Assistant for demo.flowdexx.com.`,
-      temperature: 0.3,
-      maxTokens: 512,
-      restrictedTopics: ['Competitor financial details', 'Internal server passwords'],
-      suggestedQuestions: [
-        'What features does FlowDexx offer?',
-        'How much does the Pro plan cost?',
-        'Can I talk to a human support agent?',
-        'How do I embed the AI widget on my site?'
-      ],
-      handoffEnabled: true,
-      handoffTriggerWords: ['human', 'agent', 'support rep', 'real human'],
-      slackWebhookUrl: 'https://hooks.slack.com/services/T000/B000/XXXXX',
-      supportEmail: 'support@flowdexx.com',
-      rateLimitPerMin: 60,
-      domainVerificationSecret: 'sec_flowdexx_verified_99',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    this.websites.set(defaultSite.id, defaultSite);
-
-    const kb1: KnowledgeItem = {
-      id: 'kb_1',
-      websiteId: defaultSite.id,
-      type: 'url',
-      title: 'FlowDexx Overview & Features Documentation',
-      sourceUrl: 'https://demo.flowdexx.com/docs/features',
-      content: `FlowDexx AI is the all-in-one AI Website Assistant Platform.\nKey Features:\n- Single line JavaScript embed tag: <script src="https://demo.flowdexx.com/widget.js" data-website-id="site_acme_123" async></script>\n- Shadow DOM isolation preventing host website CSS bleeding.\n- Web crawler for automatic documentation indexing.\n- Live Human Support Takeover Inbox.\n- Lead capture CRM with CSV export and Firebase Admin integration.`,
-      chunksCount: 3,
-      status: 'indexed',
-      lastSyncedAt: new Date().toISOString(),
-    };
-
-    this.knowledgeItems.set(kb1.id, kb1);
-
-    this.leads.push({
-      id: 'lead_101',
-      websiteId: defaultSite.id,
-      name: 'Sarah Jenkins',
-      email: 'sarah.j@techflow.io',
-      phone: '+1 (555) 234-5678',
-      company: 'TechFlow Solutions',
-      sourceUrl: 'https://demo.flowdexx.com/pricing',
-      createdAt: new Date(Date.now() - 86400000).toISOString(),
-    });
   }
 
   /**

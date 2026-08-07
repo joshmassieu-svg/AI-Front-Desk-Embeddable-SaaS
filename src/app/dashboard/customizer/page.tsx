@@ -21,6 +21,7 @@ import {
 const colorPresets = ['#536df4', '#10b981', '#ec4899', '#8b5cf6', '#f59e0b', '#06b6d4', '#3b82f6'];
 
 import { useRef } from 'react';
+import { useWebsite } from '@/context/website-context';
 
 function ParticleTrailCanvas({ theme, primaryColor, enabled }: { theme: string; primaryColor: string; enabled: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -135,22 +136,24 @@ function ParticleTrailCanvas({ theme, primaryColor, enabled }: { theme: string; 
 }
 
 export default function CustomizerPage() {
+  const { currentSite, currentSiteId, updateWebsite } = useWebsite();
   const [config, setConfig] = useState({
-    botName: 'Acme Copilot',
-    welcomeMessage: "👋 Hi there! I'm Acme's AI Assistant. How can I help you today?",
+    name: 'AI Front-Desk Platform',
+    theme: 'dark' as 'dark' | 'light' | 'auto',
     primaryColor: '#536df4',
-    theme: 'dark',
-    position: 'bottom-right' as 'bottom-right' | 'bottom-left' | 'bottom-center',
+    welcomeMessage: '👋 Welcome! How can I assist you today?',
+    botName: 'AI Copilot',
     launcherStyle: 'bar' as 'circle' | 'pill' | 'bar' | 'tab',
     launcherText: 'Ask AI anything...',
-    launcherPlaceholder: 'Type a question...',
-    launcherAnimation: 'none' as 'none' | 'pulse' | 'glow' | 'bounce' | 'float',
     launcherTheme: 'solid' as 'solid' | 'cosmic' | 'sunset' | 'ocean' | 'rainbow' | 'glass',
+    launcherAnimation: 'none' as 'none' | 'pulse' | 'glow' | 'bounce' | 'float',
     enableParticleTrail: false,
     enableLoadingWaves: false,
     borderRadius: 16,
-    launcherIcon: 'sparkles',
+    launcherIcon: 'sparkles' as 'chat' | 'sparkles' | 'message' | 'headset',
     botAvatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=120&h=120&q=80',
+    position: 'bottom-right' as 'bottom-right' | 'bottom-left' | 'bottom-center',
+    launcherPlaceholder: 'Type a question...',
     leadFormEnabled: true,
     leadFormTitle: 'Want personalized onboarding?',
     customCss: `/* Scoped Shadow DOM custom CSS */
@@ -162,31 +165,27 @@ export default function CustomizerPage() {
   const [previewTab, setPreviewTab] = useState<'desktop' | 'mobile'>('desktop');
 
   useEffect(() => {
-    fetch('/api/v1/website?websiteId=site_acme_123')
-      .then(res => res.json())
-      .then(data => {
-        if (data) {
-          setConfig(prev => ({
-            ...prev,
-            ...data
-          }));
-        }
-      })
-      .catch(err => console.error(err));
-  }, []);
+    if (currentSiteId) {
+      fetch(`/api/v1/website?websiteId=${currentSiteId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.id) {
+            setConfig(prev => ({
+              ...prev,
+              ...data
+            }));
+          }
+        })
+        .catch(err => console.error(err));
+    }
+  }, [currentSiteId]);
 
   // Save handler
   const handleSave = async () => {
+    if (!currentSiteId) return;
     setSaving(true);
     try {
-      await fetch('/api/v1/website', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: 'site_acme_123',
-          ...config,
-        })
-      });
+      await updateWebsite(config as any);
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 3000);
     } catch (err) {
@@ -335,8 +334,9 @@ export default function CustomizerPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setConfig({
-              botName: 'Acme Copilot',
-              welcomeMessage: "👋 Hi there! I'm Acme's AI Assistant. How can I help you today?",
+              name: 'AI Front-Desk Platform',
+              botName: 'AI Copilot',
+              welcomeMessage: "👋 Welcome! How can I assist you today?",
               primaryColor: '#536df4',
               theme: 'dark',
               position: 'bottom-right',
@@ -353,7 +353,7 @@ export default function CustomizerPage() {
               leadFormEnabled: true,
               leadFormTitle: 'Want personalized onboarding?',
               customCss: '',
-            })}
+            } as any)}
             className="px-3.5 py-2 text-xs font-medium text-slate-400 hover:text-slate-200 bg-slate-900 border border-slate-700/70 rounded-xl transition flex items-center gap-1.5"
           >
             <RotateCcw className="w-3.5 h-3.5" /> Reset Defaults

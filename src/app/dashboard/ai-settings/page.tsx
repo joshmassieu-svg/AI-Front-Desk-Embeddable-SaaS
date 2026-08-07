@@ -3,7 +3,10 @@
 import React, { useState } from 'react';
 import { Cpu, Shield, Sliders, Save, Check, AlertTriangle, Globe, Sparkles } from 'lucide-react';
 
+import { useWebsite } from '@/context/website-context';
+
 export default function AISettingsPage() {
+  const { currentSiteId, updateWebsite } = useWebsite();
   const [model, setModel] = useState<'gemini-1.5-flash' | 'gemini-1.5-pro' | 'gemini-2.0-flash'>('gemini-1.5-flash');
   const [temperature, setTemperature] = useState(0.3);
   const [maxTokens, setMaxTokens] = useState(512);
@@ -22,20 +25,16 @@ Guidelines:
   const [saved, setSaved] = useState(false);
 
   const handleSave = async () => {
+    if (!currentSiteId) return;
     setSaving(true);
     try {
-      await fetch('/api/v1/website', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: 'site_acme_123',
-          model,
-          temperature,
-          maxTokens,
-          systemPrompt,
-          restrictedTopics: restrictedTopics.split(',').map(s => s.trim()),
-          allowedDomains: allowedDomains.split(',').map(s => s.trim()),
-        }),
+      await updateWebsite({
+        model,
+        temperature,
+        maxTokens,
+        systemPrompt,
+        restrictedTopics: restrictedTopics.split(',').map(s => s.trim()),
+        allowedDomains: allowedDomains.split(',').map(s => s.trim()),
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);

@@ -42,15 +42,19 @@ const topQuestions = [
   { question: 'Does Acme support custom domain whitelisting?', count: 54, category: 'Security' },
 ];
 
+import { useWebsite } from '@/context/website-context';
+
 export default function OverviewPage() {
+  const { currentSite, currentSiteId } = useWebsite();
+
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       {/* Top Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-brand-900/40 via-slate-900 to-indigo-950/40 p-6 rounded-2xl border border-brand-500/20 shadow-glow">
         <div>
-          <h2 className="text-xl font-bold text-white mb-1">Acme SaaS Platform Analytics</h2>
+          <h2 className="text-xl font-bold text-white mb-1">{currentSite?.name || 'Workplace'} Analytics</h2>
           <p className="text-slate-400 text-sm">
-            Real-time AI performance metrics, visitor engagement, and lead conversion rates for <span className="text-brand-300 font-medium">site_acme_123</span>.
+            Real-time AI performance metrics, visitor engagement, and lead conversion rates for <span className="text-brand-300 font-medium">{currentSite?.domain || currentSiteId}</span>.
           </p>
         </div>
         <div className="flex gap-3 shrink-0">

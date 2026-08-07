@@ -3,7 +3,11 @@ import { db } from '@/lib/db';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const siteId = searchParams.get('siteId') || searchParams.get('websiteId') || 'site_acme_123';
+  const siteId = searchParams.get('siteId') || searchParams.get('websiteId');
+
+  if (!siteId) {
+    return NextResponse.json({ error: 'siteId query parameter is required' }, { status: 400 });
+  }
 
   const website = await db.getWebsiteAsync(siteId);
   if (!website) {

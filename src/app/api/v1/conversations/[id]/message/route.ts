@@ -4,7 +4,7 @@ import { db } from '@/lib/db';
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const conversationId = params.id;
-    const { content, agentName = 'Sarah Jenkins' } = await req.json();
+    const { content, agentName = 'Support Agent' } = await req.json();
 
     if (!content) {
       return NextResponse.json({ error: 'Message content is required' }, { status: 400 });

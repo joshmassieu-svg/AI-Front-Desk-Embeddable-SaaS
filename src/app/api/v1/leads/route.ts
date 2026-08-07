@@ -3,7 +3,11 @@ import { db } from '@/lib/db';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const websiteId = searchParams.get('websiteId') || 'site_acme_123';
+  const websiteId = searchParams.get('websiteId');
+
+  if (!websiteId) {
+    return NextResponse.json({ leads: [] });
+  }
 
   const leads = await db.getLeadsAsync(websiteId);
   return NextResponse.json({ leads });
@@ -12,10 +16,14 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { websiteId = 'site_acme_123', conversationId, name, email, phone, company, sourceUrl } = body;
+    const { websiteId, conversationId, name, email, phone, company, sourceUrl } = body;
 
     if (!email) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+    }
+
+    if (!websiteId) {
+      return NextResponse.json({ error: 'websiteId is required' }, { status: 400 });
     }
 
     const lead = await db.addLeadAsync({

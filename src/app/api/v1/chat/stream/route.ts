@@ -6,10 +6,14 @@ import { generateGeminiChatStream } from '@/lib/gemini';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { websiteId = 'site_acme_123', visitorId = 'vis_anon', conversationId, message, currentUrl } = body;
+    const { websiteId, visitorId = 'vis_anon', conversationId, message, currentUrl } = body;
 
     if (!message) {
       return NextResponse.json({ error: 'Message content required' }, { status: 400 });
+    }
+
+    if (!websiteId) {
+      return NextResponse.json({ error: 'websiteId parameter required' }, { status: 400 });
     }
 
     const website = await db.getWebsiteAsync(websiteId);

@@ -3,7 +3,11 @@ import { db } from '@/lib/db';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const websiteId = searchParams.get('websiteId') || 'site_acme_123';
+  const websiteId = searchParams.get('websiteId');
+
+  if (!websiteId) {
+    return NextResponse.json({ conversations: [] });
+  }
 
   const conversations = await db.getConversationsAsync(websiteId);
   return NextResponse.json({ conversations });

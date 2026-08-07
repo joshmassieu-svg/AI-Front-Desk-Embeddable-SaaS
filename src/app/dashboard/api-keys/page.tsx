@@ -3,45 +3,38 @@
 import React, { useState, useEffect } from 'react';
 import { Key, Plus, Trash2, Shield, Eye, EyeOff, Radio, Check, Save } from 'lucide-react';
 import { ApiKey, Webhook } from '@/lib/types';
+import { useWebsite } from '@/context/website-context';
 
 export default function ApiKeysPage() {
+  const { currentSiteId, currentSite } = useWebsite();
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [webhooks, setWebhooks] = useState<Webhook[]>([]);
   const [newKeyName, setNewKeyName] = useState('');
-  const [webhookUrl, setWebhookUrl] = useState('https://api.techflow.io/webhooks/acme-leads');
+  const [webhookUrl, setWebhookUrl] = useState('');
   const [showKey, setShowKey] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    // Seed initial data
-    setKeys([
-      {
-        id: 'key_1',
-        websiteId: 'site_acme_123',
-        name: 'Production Server Key',
-        key: 'ak_live_998877665544332211',
-        createdAt: new Date().toISOString(),
-        lastUsedAt: new Date().toISOString(),
-      }
-    ]);
-    setWebhooks([
-      {
-        id: 'wh_1',
-        websiteId: 'site_acme_123',
-        url: 'https://api.techflow.io/webhooks/acme-leads',
-        secret: 'whsec_secret99887766',
-        events: ['lead.captured', 'handoff.requested'],
-        active: true,
-        createdAt: new Date().toISOString(),
-      }
-    ]);
-  }, []);
+    if (currentSiteId) {
+      setKeys([
+        {
+          id: `key_${currentSiteId}`,
+          websiteId: currentSiteId,
+          name: 'Production API Key',
+          key: currentSite?.apiKey || `pk_live_${currentSiteId}`,
+          createdAt: new Date().toISOString(),
+          lastUsedAt: new Date().toISOString(),
+        }
+      ]);
+      setWebhooks([]);
+    }
+  }, [currentSiteId]);
 
   const handleCreateKey = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newKeyName) return;
+    if (!newKeyName || !currentSiteId) return;
     const newKey: ApiKey = {
       id: `key_${Date.now()}`,
-      websiteId: 'site_acme_123',
+      websiteId: currentSiteId,
       name: newKeyName,
       key: `ak_live_${Math.random().toString(36).substring(2)}${Math.random().toString(36).substring(2)}`,
       createdAt: new Date().toISOString(),

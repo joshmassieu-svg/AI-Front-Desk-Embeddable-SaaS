@@ -18,18 +18,18 @@ interface WebsiteContextType {
 }
 
 const defaultSite: WebsiteConfig = {
-  id: 'site_acme_123',
-  name: 'Acme SaaS Platform',
-  domain: 'acme.com',
-  allowedDomains: ['acme.com', 'localhost', '127.0.0.1'],
-  apiKey: 'pk_live_acme9876543210',
+  id: 'site_default',
+  name: 'AI Front-Desk Assistant',
+  domain: 'mywebsite.com',
+  allowedDomains: ['mywebsite.com', 'localhost', '127.0.0.1'],
+  apiKey: 'pk_live_default',
   theme: 'dark',
   primaryColor: '#536df4',
   textColor: '#ffffff',
   backgroundColor: '#0f172a',
   position: 'bottom-right',
-  welcomeMessage: "👋 Welcome to Acme AI! How can I assist you with your website assistant platform today?",
-  botName: 'Acme Copilot',
+  welcomeMessage: "👋 Hello! How can I help you today?",
+  botName: 'AI Assistant',
   botAvatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=120&h=120&q=80',
   launcherIcon: 'sparkles',
   launcherStyle: 'bar',
@@ -45,18 +45,18 @@ const defaultSite: WebsiteConfig = {
   onlineStatus: 'online',
   offlineMessage: 'We are currently offline. Leave your email and our team will follow up!',
   leadFormEnabled: true,
-  leadFormTitle: 'Want personalized onboarding?',
+  leadFormTitle: 'Leave your contact info',
   leadFields: { name: true, email: true, phone: false, company: true },
   model: 'gemini-1.5-flash',
-  systemPrompt: 'You are Acme Copilot, an official AI Customer Support Assistant.',
+  systemPrompt: 'You are a helpful AI customer support assistant.',
   temperature: 0.3,
   maxTokens: 512,
   restrictedTopics: [],
-  suggestedQuestions: ['What features do you offer?', 'Pricing details', 'How to embed?'],
+  suggestedQuestions: ['What services do you offer?', 'How can I contact support?'],
   handoffEnabled: true,
   handoffTriggerWords: ['human', 'agent', 'support rep'],
   rateLimitPerMin: 60,
-  domainVerificationSecret: 'sec_verified_99',
+  domainVerificationSecret: 'sec_verify_default',
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 };
@@ -64,7 +64,7 @@ const defaultSite: WebsiteConfig = {
 const WebsiteContext = createContext<WebsiteContextType>({
   websites: [defaultSite],
   currentSite: defaultSite,
-  currentSiteId: 'site_acme_123',
+  currentSiteId: 'site_default',
   setCurrentSiteId: () => {},
   isLoading: false,
   workplace: null,
@@ -76,7 +76,7 @@ const WebsiteContext = createContext<WebsiteContextType>({
 export function WebsiteProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [websites, setWebsites] = useState<WebsiteConfig[]>([defaultSite]);
-  const [currentSiteId, setCurrentSiteIdState] = useState<string>('site_acme_123');
+  const [currentSiteId, setCurrentSiteIdState] = useState<string>('site_default');
   const [workplace, setWorkplace] = useState<Workplace | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 

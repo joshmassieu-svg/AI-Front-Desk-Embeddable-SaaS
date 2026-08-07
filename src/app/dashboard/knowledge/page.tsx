@@ -17,8 +17,10 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { KnowledgeItem } from '@/lib/types';
+import { useWebsite } from '@/context/website-context';
 
 export default function KnowledgePage() {
+  const { currentSiteId } = useWebsite();
   const [items, setItems] = useState<KnowledgeItem[]>([]);
   const [activeTab, setActiveTab] = useState<'crawl' | 'file' | 'text' | 'rag-test'>('crawl');
   const [loading, setLoading] = useState(false);
@@ -36,11 +38,12 @@ export default function KnowledgePage() {
 
   useEffect(() => {
     fetchItems();
-  }, []);
+  }, [currentSiteId]);
 
   const fetchItems = async () => {
+    if (!currentSiteId) return;
     try {
-      const res = await fetch('/api/v1/knowledge?websiteId=site_acme_123');
+      const res = await fetch(`/api/v1/knowledge?websiteId=${currentSiteId}`);
       const data = await res.json();
       if (data.items) setItems(data.items);
     } catch (err) {
@@ -50,14 +53,14 @@ export default function KnowledgePage() {
 
   const handleCrawl = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!crawlUrl) return;
+    if (!crawlUrl || !currentSiteId) return;
     setLoading(true);
 
     try {
       await fetch('/api/v1/knowledge/crawl', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ websiteId: 'site_acme_123', url: crawlUrl }),
+        body: JSON.stringify({ websiteId: currentSiteId, url: crawlUrl }),
       });
       setCrawlUrl('');
       fetchItems();
@@ -70,7 +73,7 @@ export default function KnowledgePage() {
 
   const handleAddManual = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!manualTitle || !manualContent) return;
+    if (!manualTitle || !manualContent || !currentSiteId) return;
     setLoading(true);
 
     try {
@@ -78,7 +81,7 @@ export default function KnowledgePage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          websiteId: 'site_acme_123',
+          websiteId: currentSiteId,
           type: 'text',
           title: manualTitle,
           content: manualContent,
@@ -96,7 +99,7 @@ export default function KnowledgePage() {
 
   const handleFileUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fileTitle || !fileContent) return;
+    if (!fileTitle || !fileContent || !currentSiteId) return;
     setLoading(true);
 
     try {
@@ -104,7 +107,7 @@ export default function KnowledgePage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          websiteId: 'site_acme_123',
+          websiteId: currentSiteId,
           type: 'file',
           title: fileTitle,
           fileName: fileTitle,

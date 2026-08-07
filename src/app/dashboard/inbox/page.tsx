@@ -16,23 +16,30 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { Conversation } from '@/lib/types';
+import { useWebsite } from '@/context/website-context';
+import { useAuth } from '@/context/auth-context';
 
 export default function InboxPage() {
+  const { currentSiteId } = useWebsite();
+  const { user } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'human_requested' | 'ai'>('all');
   const [agentMsg, setAgentMsg] = useState('');
   const [sending, setSending] = useState(false);
 
+  const agentDisplayName = user?.displayName || user?.email?.split('@')[0] || 'Support Agent';
+
   useEffect(() => {
     fetchConversations();
     const interval = setInterval(fetchConversations, 4000); // Live poll updates
     return () => clearInterval(interval);
-  }, []);
+  }, [currentSiteId]);
 
   const fetchConversations = async () => {
+    if (!currentSiteId) return;
     try {
-      const res = await fetch('/api/v1/conversations?websiteId=site_acme_123');
+      const res = await fetch(`/api/v1/conversations?websiteId=${currentSiteId}`);
       const data = await res.json();
       if (data.conversations) {
         setConversations(data.conversations);
@@ -56,7 +63,7 @@ export default function InboxPage() {
         body: JSON.stringify({
           id: activeConvId,
           status,
-          assignedAgent: 'Sarah Jenkins',
+          assignedAgent: agentDisplayName,
         }),
       });
       fetchConversations();
@@ -76,7 +83,7 @@ export default function InboxPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           content: text.trim(),
-          agentName: 'Sarah Jenkins',
+          agentName: agentDisplayName,
         }),
       });
       setAgentMsg('');
