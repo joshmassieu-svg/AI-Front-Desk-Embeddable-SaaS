@@ -3,7 +3,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { WebsiteConfig } from '@/lib/types';
 import { useAuth } from '@/context/auth-context';
-import { getOrCreateUserWorkplace, updateWorkplaceWebsiteInFirestore, Workplace } from '@/lib/firestore-service';
+import {
+  getOrCreateUserWorkplace,
+  updateWorkplaceWebsiteInFirestore,
+  getUserWebsitesFromFirestore,
+  createWebsiteInFirestore,
+  Workplace,
+} from '@/lib/firestore-service';
 
 interface WebsiteContextType {
   websites: WebsiteConfig[];
@@ -28,8 +34,8 @@ const defaultSite: WebsiteConfig = {
   textColor: '#ffffff',
   backgroundColor: '#0f172a',
   position: 'bottom-right',
-  welcomeMessage: "👋 Hello! How can I help you today?",
-  botName: 'AI Assistant',
+  welcomeMessage: '👋 Welcome! How can I assist you today?',
+  botName: 'AI Copilot',
   botAvatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=120&h=120&q=80',
   launcherIcon: 'sparkles',
   launcherStyle: 'bar',
@@ -45,14 +51,14 @@ const defaultSite: WebsiteConfig = {
   onlineStatus: 'online',
   offlineMessage: 'We are currently offline. Leave your email and our team will follow up!',
   leadFormEnabled: true,
-  leadFormTitle: 'Leave your contact info',
+  leadFormTitle: 'Want personalized onboarding?',
   leadFields: { name: true, email: true, phone: false, company: true },
   model: 'gemini-1.5-flash',
-  systemPrompt: 'You are a helpful AI customer support assistant.',
+  systemPrompt: 'You are an AI Customer Support Assistant. Be helpful, concise, and professional.',
   temperature: 0.3,
   maxTokens: 512,
   restrictedTopics: [],
-  suggestedQuestions: ['What services do you offer?', 'How can I contact support?'],
+  suggestedQuestions: ['What features do you offer?', 'Pricing details', 'How to contact support?'],
   handoffEnabled: true,
   handoffTriggerWords: ['human', 'agent', 'support rep'],
   rateLimitPerMin: 60,
@@ -66,7 +72,7 @@ const WebsiteContext = createContext<WebsiteContextType>({
   currentSite: defaultSite,
   currentSiteId: 'site_default',
   setCurrentSiteId: () => {},
-  isLoading: false,
+  isLoading: true,
   workplace: null,
   refreshWebsites: async () => {},
   createWebsite: async () => null,
@@ -80,7 +86,7 @@ export function WebsiteProvider({ children }: { children: React.ReactNode }) {
   const [workplace, setWorkplace] = useState<Workplace | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Sync user's workplace website from Firestore (default) database
+  // Sync user's workplace websites from Firestore (default) database
   useEffect(() => {
     async function loadUserWorkplace() {
       if (user) {
@@ -88,9 +94,17 @@ export function WebsiteProvider({ children }: { children: React.ReactNode }) {
         try {
           const wp = await getOrCreateUserWorkplace(user.uid, user.email || '');
           setWorkplace(wp);
-          setWebsites([wp.websiteConfig]);
-          setCurrentSiteIdState(wp.websiteConfig.id);
-          localStorage.setItem('active_website_id', wp.websiteConfig.id);
+
+          const userSites = await getUserWebsitesFromFirestore(user.uid, wp.id);
+          const allSites = userSites.length > 0 ? userSites : [wp.websiteConfig];
+
+          setWebsites(allSites);
+
+          const savedSiteId = localStorage.getItem('active_website_id');
+          const targetSiteId = savedSiteId && allSites.some(s => s.id === savedSiteId) ? savedSiteId : allSites[0].id;
+
+          setCurrentSiteIdState(targetSiteId);
+          localStorage.setItem('active_website_id', targetSiteId);
         } catch (err) {
           console.error('Failed loading user workplace from Firestore:', err);
         } finally {
@@ -117,9 +131,12 @@ export function WebsiteProvider({ children }: { children: React.ReactNode }) {
     if (user && workplace) {
       try {
         setIsLoading(true);
-        const wp = await getOrCreateUserWorkplace(user.uid, user.email || '');
-        setWorkplace(wp);
-        setWebsites([wp.websiteConfig]);
+        const userSites = await getUserWebsitesFromFirestore(user.uid, workplace.id);
+        if (userSites.length > 0) {
+          setWebsites(userSites);
+        } else {
+          setWebsites([workplace.websiteConfig]);
+        }
       } catch (err) {
         console.error('Error refreshing Firestore workplace website:', err);
       } finally {
@@ -153,35 +170,33 @@ export function WebsiteProvider({ children }: { children: React.ReactNode }) {
   };
 
   const createWebsite = async (name: string, domain: string): Promise<WebsiteConfig | null> => {
-    // 1 website per workplace rule: update existing workplace website or create/update in Firestore
-    if (workplace) {
-      const updated = await updateWebsite({ name, domain, allowedDomains: [domain, 'localhost', '127.0.0.1'] });
-      return updated;
-    }
-
     try {
-      const newId = `site_${Date.now()}`;
-      const newSite: WebsiteConfig = {
-        ...defaultSite,
-        id: newId,
-        name,
-        domain,
-        allowedDomains: [domain, 'localhost', '127.0.0.1'],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+      let newSite: WebsiteConfig;
 
-      const res = await fetch('/api/v1/website', {
+      if (user && workplace) {
+        newSite = await createWebsiteInFirestore(user.uid, workplace.id, name, domain);
+      } else {
+        const newId = `site_${Date.now()}`;
+        newSite = {
+          ...defaultSite,
+          id: newId,
+          name,
+          domain,
+          allowedDomains: [domain, 'localhost', '127.0.0.1'],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      }
+
+      await fetch('/api/v1/website', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newSite),
       });
 
-      if (res.ok) {
-        setWebsites((prev) => [...prev, newSite]);
-        setCurrentSiteId(newId);
-        return newSite;
-      }
+      setWebsites((prev) => [...prev, newSite]);
+      setCurrentSiteId(newSite.id);
+      return newSite;
     } catch (err) {
       console.error('Error creating new website:', err);
     }

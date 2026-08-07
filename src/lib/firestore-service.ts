@@ -175,3 +175,49 @@ export async function updateWorkplaceWebsiteInFirestore(
     return null;
   }
 }
+
+/**
+ * Fetch all websites created by a user/workplace from Firestore.
+ */
+export async function getUserWebsitesFromFirestore(userId: string, workplaceId: string): Promise<WebsiteConfig[]> {
+  try {
+    const websitesRef = collection(db, 'websites');
+    const q = query(websitesRef, where('workplaceId', '==', workplaceId));
+    const querySnap = await getDocs(q);
+
+    const results: WebsiteConfig[] = [];
+    querySnap.forEach((docSnap) => {
+      results.push(docSnap.data() as WebsiteConfig);
+    });
+
+    if (results.length > 0) {
+      return results;
+    }
+  } catch (err) {
+    console.error('Error querying user websites from Firestore:', err);
+  }
+  return [];
+}
+
+/**
+ * Create a new distinct website for a workplace in Firestore.
+ */
+export async function createWebsiteInFirestore(
+  userId: string,
+  workplaceId: string,
+  name: string,
+  domain: string
+): Promise<WebsiteConfig> {
+  const siteId = `site_${userId.substring(0, 6)}_${Date.now()}`;
+  const websiteConfig = createInitialWebsiteConfig(siteId, name, domain);
+  (websiteConfig as any).workplaceId = workplaceId;
+  (websiteConfig as any).userId = userId;
+
+  try {
+    await setDoc(doc(db, 'websites', siteId), websiteConfig);
+  } catch (err) {
+    console.error('Error creating website doc in Firestore:', err);
+  }
+
+  return websiteConfig;
+}

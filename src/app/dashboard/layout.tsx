@@ -81,13 +81,13 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
           {/* Website Switcher / Workplace Display */}
           <div className="p-4 border-b border-slate-800/50 space-y-2">
             <div className="flex items-center justify-between text-[11px] font-semibold tracking-wider text-slate-400 uppercase">
-              <span>{workplace ? 'Your Workplace Website' : 'Active Website'}</span>
+              <span>Your Websites ({websites.length})</span>
               <button
                 onClick={() => setShowNewSiteModal(true)}
-                className="text-brand-400 hover:text-brand-300 flex items-center gap-0.5 font-bold cursor-pointer"
-                title="Configure Workplace Website"
+                className="text-brand-400 hover:text-brand-300 flex items-center gap-0.5 font-bold cursor-pointer transition"
+                title="Add New Website"
               >
-                <Plus className="w-3 h-3" /> Edit
+                <Plus className="w-3 h-3" /> Add Website
               </button>
             </div>
             <div className="relative">
