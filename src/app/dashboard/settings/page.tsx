@@ -1,10 +1,37 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Settings, CreditCard, Check, Zap, Users, ShieldCheck, Building } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Settings, Check, Zap } from 'lucide-react';
+import { useWebsite } from '@/context/website-context';
 
 export default function SettingsPage() {
+  const { currentSiteId } = useWebsite();
   const [currentPlan, setCurrentPlan] = useState<'starter' | 'pro' | 'enterprise'>('pro');
+  const [convCount, setConvCount] = useState(0);
+  const [kbCount, setKbCount] = useState(0);
+
+  useEffect(() => {
+    if (!currentSiteId) return;
+
+    fetch(`/api/v1/conversations?websiteId=${currentSiteId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.conversations) setConvCount(data.conversations.length);
+      })
+      .catch((err) => console.error(err));
+
+    fetch(`/api/v1/knowledge?websiteId=${currentSiteId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.items) setKbCount(data.items.length);
+      })
+      .catch((err) => console.error(err));
+  }, [currentSiteId]);
+
+  const convLimit = 10000;
+  const kbLimit = 100;
+  const convPct = Math.min(100, Number(((convCount / convLimit) * 100).toFixed(1)));
+  const kbPct = Math.min(100, Number(((kbCount / kbLimit) * 100).toFixed(1)));
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
@@ -55,7 +82,6 @@ export default function SettingsPage() {
               <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-brand-400" /> 10,000 AI Conversations/mo</li>
               <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-brand-400" /> 100 Knowledge Base docs</li>
               <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-brand-400" /> Live Support Agent Takeover</li>
-              <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-brand-400" /> Custom Branding & Webhooks</li>
             </ul>
           </div>
           <button
@@ -98,20 +124,20 @@ export default function SettingsPage() {
           <div>
             <div className="flex justify-between text-xs font-semibold text-slate-300 mb-1">
               <span>AI Conversations (Monthly)</span>
-              <span className="text-brand-400">1,428 / 10,000 (14.2%)</span>
+              <span className="text-brand-400">{convCount.toLocaleString()} / {convLimit.toLocaleString()} ({convPct}%)</span>
             </div>
             <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
-              <div className="bg-brand-500 h-full rounded-full" style={{ width: '14.2%' }} />
+              <div className="bg-brand-500 h-full rounded-full" style={{ width: `${convPct}%` }} />
             </div>
           </div>
 
           <div>
             <div className="flex justify-between text-xs font-semibold text-slate-300 mb-1">
               <span>Knowledge Base Documents</span>
-              <span className="text-purple-400">3 / 100 (3%)</span>
+              <span className="text-purple-400">{kbCount.toLocaleString()} / {kbLimit.toLocaleString()} ({kbPct}%)</span>
             </div>
             <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
-              <div className="bg-purple-500 h-full rounded-full" style={{ width: '3%' }} />
+              <div className="bg-purple-500 h-full rounded-full" style={{ width: `${kbPct}%` }} />
             </div>
           </div>
         </div>

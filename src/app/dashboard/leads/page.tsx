@@ -69,23 +69,29 @@ export default function LeadsPage() {
       </div>
 
       {/* Metric Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="glass-panel p-5 rounded-2xl border border-slate-800">
           <div className="text-xs font-semibold text-slate-400 uppercase mb-1">Total Captured Leads</div>
           <div className="text-2xl font-bold text-white">{leads.length}</div>
-          <div className="text-[11px] text-emerald-400 mt-1">100% verified emails</div>
+          <div className="text-[11px] text-emerald-400 mt-1">Verified contacts</div>
         </div>
 
         <div className="glass-panel p-5 rounded-2xl border border-slate-800">
-          <div className="text-xs font-semibold text-slate-400 uppercase mb-1">Lead Conversion Rate</div>
-          <div className="text-2xl font-bold text-white">14.2%</div>
-          <div className="text-[11px] text-slate-400 mt-1">From visitor chat prompts</div>
-        </div>
-
-        <div className="glass-panel p-5 rounded-2xl border border-slate-800">
-          <div className="text-xs font-semibold text-slate-400 uppercase mb-1">Top Converting Page</div>
-          <div className="text-2xl font-bold text-white">/pricing</div>
-          <div className="text-[11px] text-slate-400 mt-1">62% of leads originated here</div>
+          <div className="text-xs font-semibold text-slate-400 uppercase mb-1">Top Lead Source</div>
+          <div className="text-2xl font-bold text-white">
+            {leads.length > 0
+              ? Object.entries(
+                  leads.reduce((acc, l) => {
+                    const src = l.sourceUrl || 'Direct Chat';
+                    acc[src] = (acc[src] || 0) + 1;
+                    return acc;
+                  }, {} as Record<string, number>)
+                ).sort((a, b) => b[1] - a[1])[0][0]
+              : 'N/A'}
+          </div>
+          <div className="text-[11px] text-slate-400 mt-1">
+            {leads.length > 0 ? 'Highest conversion source' : 'No leads captured yet'}
+          </div>
         </div>
       </div>
 

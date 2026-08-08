@@ -1,17 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   MessageSquare,
   Users,
   CheckCircle2,
   Star,
-  Zap,
   TrendingUp,
-  ArrowUpRight,
-  Clock,
   HelpCircle,
-  Activity,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -21,31 +17,71 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
 } from 'recharts';
-
-const analyticsData = [
-  { day: 'Mon', conversations: 42, leads: 8, csat: 4.8 },
-  { day: 'Tue', conversations: 58, leads: 12, csat: 4.9 },
-  { day: 'Wed', conversations: 65, leads: 15, csat: 4.7 },
-  { day: 'Thu', conversations: 82, leads: 19, csat: 4.9 },
-  { day: 'Fri', conversations: 95, leads: 24, csat: 5.0 },
-  { day: 'Sat', conversations: 48, leads: 10, csat: 4.8 },
-  { day: 'Sun', conversations: 38, leads: 7, csat: 4.7 },
-];
-
-const topQuestions = [
-  { question: 'What features are included in the Pro Plan?', count: 142, category: 'Pricing' },
-  { question: 'How do I embed the JavaScript widget on WordPress?', count: 98, category: 'Integration' },
-  { question: 'Can I transfer active chats to human agents?', count: 76, category: 'Support' },
-  { question: 'Does Acme support custom domain whitelisting?', count: 54, category: 'Security' },
-];
-
+import { Conversation, Lead } from '@/lib/types';
 import { useWebsite } from '@/context/website-context';
 
 export default function OverviewPage() {
   const { currentSite, currentSiteId } = useWebsite();
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!currentSiteId) return;
+    setLoading(true);
+
+    Promise.all([
+      fetch(`/api/v1/conversations?websiteId=${currentSiteId}`).then((r) => r.json()),
+      fetch(`/api/v1/leads?websiteId=${currentSiteId}`).then((r) => r.json()),
+    ])
+      .then(([convData, leadData]) => {
+        if (convData.conversations) setConversations(convData.conversations);
+        if (leadData.leads) setLeads(leadData.leads);
+      })
+      .catch((err) => console.error('Error fetching analytics overview data:', err))
+      .finally(() => setLoading(false));
+  }, [currentSiteId]);
+
+  // Real calculations
+  const totalConversations = conversations.length;
+  const totalLeads = leads.length;
+  const resolvedCount = conversations.filter(
+    (c) => c.status === 'resolved' || c.status === 'ai'
+  ).length;
+  const resolutionRate =
+    totalConversations > 0 ? ((resolvedCount / totalConversations) * 100).toFixed(1) : '0';
+  const conversionRate =
+    totalConversations > 0 ? ((totalLeads / totalConversations) * 100).toFixed(1) : '0';
+
+  // Build daily breakdown from real timestamp data over the last 7 days
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const today = new Date();
+  const last7Days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() - (6 - i));
+    return d;
+  });
+
+  const chartData = last7Days.map((d) => {
+    const dayName = days[d.getDay()];
+    const dateStr = d.toISOString().split('T')[0];
+
+    const dayConvs = conversations.filter((c) => c.createdAt && c.createdAt.startsWith(dateStr)).length;
+    const dayLeads = leads.filter((l) => l.createdAt && l.createdAt.startsWith(dateStr)).length;
+
+    return {
+      day: dayName,
+      conversations: dayConvs,
+      leads: dayLeads,
+    };
+  });
+
+  // Extract top visitor questions from real conversation messages
+  const visitorQuestions = conversations
+    .flatMap((c) => (c.messages || []).filter((m) => m.sender === 'visitor'))
+    .map((m) => m.content)
+    .slice(0, 4);
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
@@ -54,7 +90,8 @@ export default function OverviewPage() {
         <div>
           <h2 className="text-xl font-bold text-white mb-1">{currentSite?.name || 'Workplace'} Analytics</h2>
           <p className="text-slate-400 text-sm">
-            Real-time AI performance metrics, visitor engagement, and lead conversion rates for <span className="text-brand-300 font-medium">{currentSite?.domain || currentSiteId}</span>.
+            Real-time AI performance metrics, visitor engagement, and lead conversion rates for{' '}
+            <span className="text-brand-300 font-medium">{currentSite?.domain || currentSiteId}</span>.
           </p>
         </div>
         <div className="flex gap-3 shrink-0">
@@ -83,9 +120,9 @@ export default function OverviewPage() {
               <MessageSquare className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-white mb-1">1,428</div>
-          <div className="flex items-center gap-1 text-emerald-400 text-xs font-medium">
-            <TrendingUp className="w-3.5 h-3.5" /> +18.4% this week
+          <div className="text-2xl font-bold text-white mb-1">{loading ? '...' : totalConversations}</div>
+          <div className="flex items-center gap-1 text-slate-400 text-xs font-medium">
+            <TrendingUp className="w-3.5 h-3.5 text-brand-400" /> Real-time active total
           </div>
         </div>
 
@@ -96,9 +133,9 @@ export default function OverviewPage() {
               <Users className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-white mb-1">95</div>
-          <div className="flex items-center gap-1 text-emerald-400 text-xs font-medium">
-            <TrendingUp className="w-3.5 h-3.5" /> 14.2% conversion rate
+          <div className="text-2xl font-bold text-white mb-1">{loading ? '...' : totalLeads}</div>
+          <div className="flex items-center gap-1 text-purple-400 text-xs font-medium">
+            {conversionRate}% conversion rate
           </div>
         </div>
 
@@ -109,9 +146,9 @@ export default function OverviewPage() {
               <CheckCircle2 className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-white mb-1">94.2%</div>
+          <div className="text-2xl font-bold text-white mb-1">{loading ? '...' : `${resolutionRate}%`}</div>
           <div className="flex items-center gap-1 text-slate-400 text-xs">
-            5.8% requested human handoff
+            {totalConversations > 0 ? `${(100 - parseFloat(resolutionRate)).toFixed(1)}% human requested` : 'No interactions yet'}
           </div>
         </div>
 
@@ -122,9 +159,9 @@ export default function OverviewPage() {
               <Star className="w-4 h-4 fill-amber-400" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-white mb-1">4.89 / 5.0</div>
+          <div className="text-2xl font-bold text-white mb-1">N/A</div>
           <div className="flex items-center gap-1 text-slate-400 text-xs">
-            Based on 320 ratings
+            No visitor ratings collected yet
           </div>
         </div>
       </div>
@@ -151,7 +188,7 @@ export default function OverviewPage() {
 
           <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={analyticsData}>
+              <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="colorConv" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#536df4" stopOpacity={0.4} />
@@ -164,7 +201,7 @@ export default function OverviewPage() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                 <XAxis dataKey="day" stroke="#64748b" fontSize={12} />
-                <YAxis stroke="#64748b" fontSize={12} />
+                <YAxis stroke="#64748b" fontSize={12} allowDecimals={false} />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', color: '#f8fafc' }}
                 />
@@ -181,23 +218,23 @@ export default function OverviewPage() {
             <h3 className="text-base font-bold text-white flex items-center gap-2">
               <HelpCircle className="w-4 h-4 text-brand-400" /> Frequently Asked
             </h3>
-            <span className="text-xs text-slate-400">Top 4 topics</span>
+            <span className="text-xs text-slate-400">Visitor messages</span>
           </div>
 
-          <div className="space-y-4">
-            {topQuestions.map((q, idx) => (
-              <div key={idx} className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800/60">
-                <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-                  <span className="px-2 py-0.5 rounded bg-brand-500/10 text-brand-300 font-medium">
-                    {q.category}
-                  </span>
-                  <span className="font-semibold text-slate-300">{q.count} queries</span>
+          <div className="space-y-3">
+            {visitorQuestions.length > 0 ? (
+              visitorQuestions.map((q, idx) => (
+                <div key={idx} className="p-3 rounded-xl bg-slate-900/60 border border-slate-800/60">
+                  <div className="text-xs font-medium text-slate-200 line-clamp-2">
+                    &quot;{q}&quot;
+                  </div>
                 </div>
-                <div className="text-xs font-medium text-slate-200 line-clamp-2">
-                  {q.question}
-                </div>
+              ))
+            ) : (
+              <div className="text-xs text-slate-500 py-8 text-center border border-dashed border-slate-800 rounded-xl">
+                No visitor questions recorded yet.
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>

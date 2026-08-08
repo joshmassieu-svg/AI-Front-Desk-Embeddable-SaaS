@@ -582,18 +582,42 @@
     }
   }
 
-  // Fetch backend configuration
-  fetch(apiOrigin + '/api/v1/widget/config?siteId=' + encodeURIComponent(websiteId) + '&t=' + Date.now())
-    .then(function (res) { return res.json(); })
+  // Fetch backend configuration with timeout and error handling
+  var hasRendered = false;
+  function safeRenderLauncher() {
+    if (!hasRendered) {
+      hasRendered = true;
+      if (timeoutId) clearTimeout(timeoutId);
+      renderLauncher();
+    }
+  }
+
+  var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  var timeoutId = setTimeout(function () {
+    if (controller) controller.abort();
+    console.warn('[AI Widget] Config fetch timed out after 5s; falling back to default config.');
+    safeRenderLauncher();
+  }, 5000);
+
+  var fetchOptions = controller ? { signal: controller.signal } : {};
+
+  fetch(apiOrigin + '/api/v1/widget/config?siteId=' + encodeURIComponent(websiteId) + '&t=' + Date.now(), fetchOptions)
+    .then(function (res) {
+      if (!res.ok) {
+        throw new Error('HTTP error ' + res.status + ' (' + res.statusText + ')');
+      }
+      return res.json();
+    })
     .then(function (res) {
       var fetchedConfig = res && (res.data || res.config || res);
-      if (fetchedConfig && typeof fetchedConfig === 'object') {
+      if (fetchedConfig && typeof fetchedConfig === 'object' && !fetchedConfig.error) {
         config = Object.assign(config, fetchedConfig);
       }
-      renderLauncher();
+      safeRenderLauncher();
     })
-    .catch(function () {
-      renderLauncher();
+    .catch(function (err) {
+      console.warn('[AI Widget] Failed to fetch custom configuration:', err.message || err);
+      safeRenderLauncher();
     });
 
   // Handle postMessages sent from iframe

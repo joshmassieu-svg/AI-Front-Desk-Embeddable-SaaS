@@ -471,29 +471,22 @@ class DatabaseStore {
     return conv;
   }
 
-  public getApiKeys(websiteId: string): ApiKey[] {
-    return this.apiKeys.filter((k) => k.websiteId === websiteId);
-  }
-
-  public getWebhooks(websiteId: string): Webhook[] {
-    return this.webhooks.filter((w) => w.websiteId === websiteId);
-  }
-
   public getAnalyticsSummary(websiteId: string): AnalyticsSummary {
     const convs = this.getConversations(websiteId);
     const leads = this.getLeads(websiteId);
     const totalMsgs = convs.reduce((acc, c) => acc + (c.messages ? c.messages.length : 0), 0);
+    const resolvedCount = convs.filter((c) => c.status === 'resolved' || c.status === 'ai').length;
 
     return {
-      totalConversations: convs.length + 142,
-      totalMessages: totalMsgs + 890,
-      totalLeads: leads.length + 38,
-      resolutionRate: 94.2,
-      csatScore: 4.8,
-      avgResponseTimeSec: 1.2,
-      knowledgeCoverage: 88.5,
-      tokenUsage: 142850,
-      activeVisitorsNow: 14,
+      totalConversations: convs.length,
+      totalMessages: totalMsgs,
+      totalLeads: leads.length,
+      resolutionRate: convs.length > 0 ? Number(((resolvedCount / convs.length) * 100).toFixed(1)) : 0,
+      csatScore: 0,
+      avgResponseTimeSec: 0,
+      knowledgeCoverage: 0,
+      tokenUsage: totalMsgs * 150,
+      activeVisitorsNow: convs.filter((c) => c.status === 'ai' || c.status === 'human_active').length,
     };
   }
 }
