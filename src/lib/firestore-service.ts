@@ -63,6 +63,14 @@ export const createInitialWebsiteConfig = (workplaceId: string, name: string, do
     launcherStyle: 'bar',
     launcherText: 'Ask AI anything...',
     launcherPlaceholder: 'Type your question...',
+    launcherPlaceholders: [
+      'Ask me anything...',
+      'How do I get started?',
+      'What are your pricing plans?',
+      'Book a live product demo...'
+    ],
+    placeholderEffect: 'random',
+    placeholderSpeed: 3500,
     borderRadius: 16,
     fontFamily: 'Inter, system-ui, sans-serif',
     customCss: '',

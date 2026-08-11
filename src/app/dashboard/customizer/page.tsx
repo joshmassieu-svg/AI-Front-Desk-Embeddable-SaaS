@@ -16,6 +16,13 @@ import {
   Smartphone,
   Monitor,
   Code2,
+  Plus,
+  X,
+  Shuffle,
+  Type,
+  Scissors,
+  ArrowUpDown,
+  Flame,
 } from 'lucide-react';
 
 const colorPresets = ['#536df4', '#10b981', '#ec4899', '#8b5cf6', '#f59e0b', '#06b6d4', '#3b82f6'];
@@ -135,8 +142,174 @@ function ParticleTrailCanvas({ theme, primaryColor, enabled }: { theme: string; 
   );
 }
 
+function RotatingPlaceholderPreview({
+  placeholders,
+  effect = 'random',
+  speed = 3500,
+  fallback = 'Ask AI anything...',
+}: {
+  placeholders?: string[];
+  effect?: string;
+  speed?: number;
+  fallback?: string;
+}) {
+  const list = placeholders && placeholders.length > 0 ? placeholders : [fallback];
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [displayText, setDisplayText] = useState(list[0] || fallback);
+  const [animClass, setAnimClass] = useState('');
+  const [isTypingCaret, setIsTypingCaret] = useState(false);
+  const [scattered, setScattered] = useState(false);
+  const [letterTransforms, setLetterTransforms] = useState<{ rx: number; ry: number; rdeg: number }[]>([]);
+
+  useEffect(() => {
+    setCurrentIndex(0);
+    setDisplayText(list[0] || fallback);
+  }, [list.join('||')]);
+
+  useEffect(() => {
+    if (effect === 'none' || list.length <= 1) {
+      setDisplayText(list[0] || fallback);
+      setAnimClass('');
+      return;
+    }
+
+    const allEffects = ['typewriter', 'dissolve', 'break', 'clip', 'vertical-slide'];
+    let timer: NodeJS.Timeout;
+
+    const runNext = () => {
+      const activeEffect = effect === 'random' ? allEffects[Math.floor(Math.random() * allEffects.length)] : effect;
+      const nextIdx = (currentIndex + 1) % list.length;
+      const targetText = list[nextIdx] || fallback;
+
+      if (activeEffect === 'typewriter') {
+        const currText = list[currentIndex] || fallback;
+        let charIdx = currText.length;
+        setIsTypingCaret(true);
+
+        const typeDelete = () => {
+          if (charIdx > 0) {
+            charIdx--;
+            setDisplayText(currText.substring(0, charIdx));
+            timer = setTimeout(typeDelete, 30);
+          } else {
+            let addIdx = 0;
+            const typeAdd = () => {
+              if (addIdx <= targetText.length) {
+                setDisplayText(targetText.substring(0, addIdx));
+                addIdx++;
+                timer = setTimeout(typeAdd, 45);
+              } else {
+                setCurrentIndex(nextIdx);
+                setTimeout(() => setIsTypingCaret(false), 300);
+                timer = setTimeout(runNext, speed);
+              }
+            };
+            typeAdd();
+          }
+        };
+        typeDelete();
+      } else if (activeEffect === 'dissolve') {
+        setAnimClass('ph-effect-dissolve-out');
+        timer = setTimeout(() => {
+          setCurrentIndex(nextIdx);
+          setDisplayText(targetText);
+          setAnimClass('ph-effect-dissolve-in');
+          timer = setTimeout(() => {
+            setAnimClass('');
+            timer = setTimeout(runNext, speed);
+          }, 400);
+        }, 400);
+      } else if (activeEffect === 'break') {
+        const currStr = list[currentIndex] || fallback;
+        const transforms = currStr.split('').map(() => ({
+          rx: (Math.random() - 0.5) * 60,
+          ry: (Math.random() - 0.5) * 40 - 20,
+          rdeg: (Math.random() - 0.5) * 90,
+        }));
+        setLetterTransforms(transforms);
+        setScattered(true);
+
+        timer = setTimeout(() => {
+          setCurrentIndex(nextIdx);
+          setDisplayText(targetText);
+          const newTransforms = targetText.split('').map(() => ({
+            rx: (Math.random() - 0.5) * 60,
+            ry: (Math.random() - 0.5) * 40 + 20,
+            rdeg: (Math.random() - 0.5) * 90,
+          }));
+          setLetterTransforms(newTransforms);
+
+          setTimeout(() => {
+            setScattered(false);
+            timer = setTimeout(() => {
+              timer = setTimeout(runNext, speed);
+            }, 450);
+          }, 50);
+        }, 450);
+      } else if (activeEffect === 'clip') {
+        setAnimClass('ph-effect-clip-out');
+        timer = setTimeout(() => {
+          setCurrentIndex(nextIdx);
+          setDisplayText(targetText);
+          setAnimClass('ph-effect-clip-in');
+          timer = setTimeout(() => {
+            setAnimClass('');
+            timer = setTimeout(runNext, speed);
+          }, 450);
+        }, 450);
+      } else if (activeEffect === 'vertical-slide') {
+        setAnimClass('ph-effect-slide-out');
+        timer = setTimeout(() => {
+          setCurrentIndex(nextIdx);
+          setDisplayText(targetText);
+          setAnimClass('ph-effect-slide-in');
+          timer = setTimeout(() => {
+            setAnimClass('');
+            timer = setTimeout(runNext, speed);
+          }, 350);
+        }, 350);
+      }
+    };
+
+    timer = setTimeout(runNext, speed);
+
+    return () => clearTimeout(timer);
+  }, [currentIndex, list, effect, speed]);
+
+  if (effect === 'break' && scattered) {
+    return (
+      <span className="truncate flex-1 text-[11px] relative z-10 text-slate-400">
+        {displayText.split('').map((char, i) => {
+          const t = letterTransforms[i] || { rx: 0, ry: 0, rdeg: 0 };
+          return (
+            <span
+              key={i}
+              className="inline-block transition-all duration-450"
+              style={{
+                transform: `translate(${t.rx}px, ${t.ry}px) rotate(${t.rdeg}deg)`,
+                opacity: 0,
+                filter: 'blur(4px)',
+              }}
+            >
+              {char === ' ' ? '\u00A0' : char}
+            </span>
+          );
+        })}
+      </span>
+    );
+  }
+
+  return (
+    <span className={`truncate flex-1 text-[11px] relative z-10 text-slate-400 ${animClass}`}>
+      {displayText}
+      {isTypingCaret && <span className="inline-block w-0.5 h-3 bg-brand-400 ml-0.5 animate-pulse align-middle" />}
+    </span>
+  );
+}
+
 export default function CustomizerPage() {
   const { currentSite, currentSiteId, updateWebsite } = useWebsite();
+  const [newPlaceholder, setNewPlaceholder] = useState('');
   const [config, setConfig] = useState({
     name: 'AI Front-Desk Platform',
     theme: 'dark' as 'dark' | 'light' | 'auto',
@@ -154,6 +327,14 @@ export default function CustomizerPage() {
     botAvatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=120&h=120&q=80',
     position: 'bottom-right' as 'bottom-right' | 'bottom-left' | 'bottom-center',
     launcherPlaceholder: 'Type a question...',
+    launcherPlaceholders: [
+      'Ask me anything...',
+      'How do I get started?',
+      'What are your pricing plans?',
+      'Book a live product demo...'
+    ],
+    placeholderEffect: 'random' as 'typewriter' | 'dissolve' | 'break' | 'clip' | 'vertical-slide' | 'random' | 'none',
+    placeholderSpeed: 3500,
     leadFormEnabled: true,
     leadFormTitle: 'Want personalized onboarding?',
     customCss: `/* Scoped Shadow DOM custom CSS */
@@ -472,16 +653,162 @@ export default function CustomizerPage() {
               </div>
             </div>
 
-            {/* Custom Label or Placeholder */}
+            {/* Custom Label or Rotating Placeholders */}
             {config.launcherStyle === 'bar' ? (
-              <div>
-                <label className="text-xs font-semibold text-slate-300 block mb-1.5">Input Bar Placeholder</label>
-                <input
-                  type="text"
-                  value={config.launcherPlaceholder}
-                  onChange={(e) => setConfig({ ...config, launcherPlaceholder: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-brand-500"
-                />
+              <div className="space-y-4 pt-2 border-t border-slate-800/80">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-brand-400" />
+                    Rotating Input Placeholders
+                  </label>
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    {(config.launcherPlaceholders || []).length} items
+                  </span>
+                </div>
+
+                {/* Add new placeholder input */}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Add a placeholder prompt..."
+                    value={newPlaceholder}
+                    onChange={(e) => setNewPlaceholder(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && newPlaceholder.trim()) {
+                        e.preventDefault();
+                        const updated = [...(config.launcherPlaceholders || []), newPlaceholder.trim()];
+                        setConfig({ ...config, launcherPlaceholders: updated });
+                        setNewPlaceholder('');
+                      }
+                    }}
+                    className="flex-1 px-3 py-1.5 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-brand-500 placeholder:text-slate-500"
+                  />
+                  <button
+                    onClick={() => {
+                      if (newPlaceholder.trim()) {
+                        const updated = [...(config.launcherPlaceholders || []), newPlaceholder.trim()];
+                        setConfig({ ...config, launcherPlaceholders: updated });
+                        setNewPlaceholder('');
+                      }
+                    }}
+                    className="px-3 py-1.5 bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs rounded-xl transition flex items-center gap-1 shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add
+                  </button>
+                </div>
+
+                {/* Active placeholders tag list */}
+                <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                  {(config.launcherPlaceholders || []).map((ph, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-xs text-slate-300 group hover:border-slate-700 transition"
+                    >
+                      <span className="truncate pr-2 font-mono text-[11px]">{ph}</span>
+                      <button
+                        onClick={() => {
+                          const updated = (config.launcherPlaceholders || []).filter((_, i) => i !== idx);
+                          setConfig({ ...config, launcherPlaceholders: updated });
+                        }}
+                        className="text-slate-500 hover:text-rose-400 p-0.5 rounded transition"
+                        title="Remove placeholder"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                  {(config.launcherPlaceholders || []).length === 0 && (
+                    <div className="text-[11px] text-slate-500 italic text-center py-2">
+                      No placeholders added. Add some below or pick a preset!
+                    </div>
+                  )}
+                </div>
+
+                {/* Quick Preset Chips */}
+                <div>
+                  <div className="text-[11px] font-medium text-slate-400 mb-1.5">Quick Presets:</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      'Ask about pricing & plans',
+                      'How to get started?',
+                      'Book a live product demo',
+                      'Technical support & docs',
+                      'Is there a free trial?',
+                    ].map((preset) => (
+                      <button
+                        key={preset}
+                        onClick={() => {
+                          if (!(config.launcherPlaceholders || []).includes(preset)) {
+                            setConfig({
+                              ...config,
+                              launcherPlaceholders: [...(config.launcherPlaceholders || []), preset],
+                            });
+                          }
+                        }}
+                        className="px-2 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-700/60 rounded-md text-[10px] text-slate-300 transition flex items-center gap-1"
+                      >
+                        <Plus className="w-2.5 h-2.5 text-brand-400" /> {preset}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Transition Effect Selector */}
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 block mb-2">
+                    Placeholder Transition Effect
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { id: 'random', label: '🎲 Random Mode', desc: 'Rotates effect to effect' },
+                      { id: 'typewriter', label: '⌨️ Typewriter', desc: 'Type & backspace' },
+                      { id: 'dissolve', label: '🌫️ Dissolving', desc: 'Fade & blur dissolve' },
+                      { id: 'break', label: '💥 Breaking Apart', desc: 'Letter scatter particles' },
+                      { id: 'clip', label: '✂️ Linear Clip', desc: 'Wipe mask transition' },
+                      { id: 'vertical-slide', label: '↕️ Vertical Slide', desc: 'Micro vertical slide' },
+                      { id: 'none', label: '🛑 Static Text', desc: 'No transition animation' },
+                    ].map((ef) => (
+                      <button
+                        key={ef.id}
+                        onClick={() => setConfig({ ...config, placeholderEffect: ef.id as any })}
+                        className={`p-2 rounded-xl border text-left transition ${
+                          config.placeholderEffect === ef.id
+                            ? 'bg-slate-900 border-brand-500 text-brand-300'
+                            : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <div className="text-xs font-semibold">{ef.label}</div>
+                        <div className="text-[10px] text-slate-500 truncate">{ef.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Rotation Speed Selector */}
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                    Rotation Interval Speed
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: 2500, label: 'Fast (2.5s)' },
+                      { id: 3500, label: 'Normal (3.5s)' },
+                      { id: 5000, label: 'Relaxed (5s)' },
+                    ].map((sp) => (
+                      <button
+                        key={sp.id}
+                        onClick={() => setConfig({ ...config, placeholderSpeed: sp.id })}
+                        className={`px-2 py-1.5 rounded-xl border text-[11px] font-medium transition text-center ${
+                          config.placeholderSpeed === sp.id
+                            ? 'bg-slate-900 border-brand-500 text-brand-300'
+                            : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        {sp.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             ) : config.launcherStyle !== 'circle' ? (
               <div>
@@ -848,9 +1175,12 @@ export default function CustomizerPage() {
                       )}
                       <ParticleTrailCanvas theme={config.launcherTheme} primaryColor={config.primaryColor} enabled={config.enableParticleTrail} />
                       <Sparkles className="w-4 h-4 text-brand-400 shrink-0 icon-sparkle relative z-10" />
-                      <span className="text-slate-400 truncate flex-1 text-[11px] relative z-10">
-                        {config.launcherPlaceholder || 'Ask AI anything...'}
-                      </span>
+                      <RotatingPlaceholderPreview
+                        placeholders={config.launcherPlaceholders}
+                        effect={config.placeholderEffect}
+                        speed={config.placeholderSpeed}
+                        fallback={config.launcherPlaceholder || 'Ask me anything...'}
+                      />
                       <div
                         className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] bar-submit-btn relative z-10"
                         style={{ backgroundColor: config.launcherTheme === 'solid' ? config.primaryColor : undefined }}

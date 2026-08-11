@@ -48,6 +48,14 @@
     launcherStyle: 'bar',
     launcherText: 'Ask AI',
     launcherPlaceholder: 'Ask me anything...',
+    launcherPlaceholders: [
+      'Ask me anything...',
+      'How do I get started?',
+      'What are your pricing plans?',
+      'Book a live product demo...'
+    ],
+    placeholderEffect: 'random',
+    placeholderSpeed: 3500,
     launcherAnimation: 'none',
     launcherTheme: 'solid',
     enableParticleTrail: false,
@@ -251,15 +259,109 @@
         box-shadow: 0 14px 36px rgba(0,0,0,0.45);
       }
       .launcher-bar svg.icon-sparkle { width: 20px; height: 20px; color: ${primary}; flex-shrink: 0; }
-      .launcher-bar input {
+      .launcher-bar-input-wrapper {
+        position: relative;
         flex: 1;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        overflow: hidden;
+      }
+      .launcher-bar input {
+        width: 100%;
+        height: 100%;
         background: transparent;
         border: none;
         color: #f8fafc;
         font-size: 14px;
         outline: none;
+        position: relative;
+        z-index: 5;
       }
-      .launcher-bar input::placeholder { color: #94a3b8; }
+      .launcher-bar input::placeholder { color: transparent; }
+
+      .launcher-placeholder-overlay {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        pointer-events: none;
+        color: #94a3b8;
+        font-size: 14px;
+        white-space: nowrap;
+        overflow: hidden;
+        z-index: 4;
+        transition: opacity 0.2s ease;
+      }
+      .launcher-placeholder-overlay.hidden {
+        opacity: 0 !important;
+        pointer-events: none !important;
+      }
+
+      /* Placeholder Animation Effects */
+      .ph-caret {
+        display: inline-block;
+        width: 2px;
+        height: 14px;
+        background: ${primary};
+        margin-left: 2px;
+        vertical-align: middle;
+        animation: ph-caret-blink 0.8s infinite;
+      }
+      @keyframes ph-caret-blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0; }
+      }
+
+      /* Dissolve Effect */
+      .ph-effect-dissolve-out { animation: ph-dissolve-out 0.4s forwards ease-in-out; }
+      .ph-effect-dissolve-in { animation: ph-dissolve-in 0.4s forwards ease-in-out; }
+      @keyframes ph-dissolve-out {
+        0% { opacity: 1; filter: blur(0px); transform: scale(1); }
+        100% { opacity: 0; filter: blur(6px); transform: scale(0.95); }
+      }
+      @keyframes ph-dissolve-in {
+        0% { opacity: 0; filter: blur(6px); transform: scale(1.05); }
+        100% { opacity: 1; filter: blur(0px); transform: scale(1); }
+      }
+
+      /* Break Apart Effect */
+      .ph-break-char {
+        display: inline-block;
+        transition: transform 0.45s ease, opacity 0.45s ease, filter 0.45s ease;
+        will-change: transform, opacity;
+      }
+      .ph-break-char.scattered {
+        opacity: 0;
+        filter: blur(4px);
+      }
+
+      /* Linear Clip Mask Effect */
+      .ph-effect-clip-out { animation: ph-clip-out 0.45s forwards ease-in-out; }
+      .ph-effect-clip-in { animation: ph-clip-in 0.45s forwards ease-in-out; }
+      @keyframes ph-clip-out {
+        0% { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); opacity: 1; }
+        100% { clip-path: polygon(100% 0, 100% 0, 100% 100%, 100% 100%); opacity: 0; }
+      }
+      @keyframes ph-clip-in {
+        0% { clip-path: polygon(0 0, 0 0, 0 100%, 0 100%); opacity: 0; }
+        100% { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); opacity: 1; }
+      }
+
+      /* Micro Vertical Slide Effect */
+      .ph-effect-slide-out { animation: ph-slide-out 0.35s forwards cubic-bezier(0.4, 0, 0.2, 1); }
+      .ph-effect-slide-in { animation: ph-slide-in 0.35s forwards cubic-bezier(0.4, 0, 0.2, 1); }
+      @keyframes ph-slide-out {
+        0% { transform: translateY(0); opacity: 1; }
+        100% { transform: translateY(-100%); opacity: 0; }
+      }
+      @keyframes ph-slide-in {
+        0% { transform: translateY(100%); opacity: 0; }
+        100% { transform: translateY(0); opacity: 1; }
+      }
       .launcher-bar button.bar-submit-btn {
         width: 38px;
         height: 38px;
@@ -498,6 +600,188 @@
     animationFrameId = requestAnimationFrame(update);
   }
 
+  // Rotating Input Placeholder Engine
+  var currentRotationTimer = null;
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function initPlaceholderRotation(containerEl) {
+    if (currentRotationTimer) {
+      clearTimeout(currentRotationTimer);
+      currentRotationTimer = null;
+    }
+
+    var inputEl = containerEl.querySelector('#bar-input-field');
+    var overlayEl = containerEl.querySelector('#placeholder-overlay');
+    if (!inputEl || !overlayEl) return;
+
+    var placeholders = (config.launcherPlaceholders && config.launcherPlaceholders.length > 0)
+      ? config.launcherPlaceholders
+      : [config.launcherPlaceholder || 'Ask me anything...'];
+
+    var effect = config.placeholderEffect || 'random';
+    var speed = config.placeholderSpeed || 3500;
+
+    if (placeholders.length === 0) return;
+
+    var currentIndex = 0;
+    var allEffects = ['typewriter', 'dissolve', 'break', 'clip', 'vertical-slide'];
+
+    function getNextEffect() {
+      if (effect === 'random') {
+        var randIdx = Math.floor(Math.random() * allEffects.length);
+        return allEffects[randIdx];
+      }
+      return effect;
+    }
+
+    // Initial text display
+    overlayEl.innerHTML = escapeHtml(placeholders[0]);
+
+    // Input interaction handlers
+    inputEl.onfocus = function () {
+      overlayEl.classList.add('hidden');
+    };
+    inputEl.onblur = function () {
+      if (!inputEl.value.trim()) {
+        overlayEl.classList.remove('hidden');
+      }
+    };
+    inputEl.oninput = function () {
+      if (inputEl.value.length > 0) {
+        overlayEl.classList.add('hidden');
+      } else {
+        overlayEl.classList.remove('hidden');
+      }
+    };
+
+    if (effect === 'none' || placeholders.length === 1) {
+      return;
+    }
+
+    function rotateNext() {
+      if (inputEl.value.length > 0 || document.activeElement === inputEl) {
+        currentRotationTimer = setTimeout(rotateNext, 1000);
+        return;
+      }
+
+      var nextIdx = (currentIndex + 1) % placeholders.length;
+      var activeEffect = getNextEffect();
+      var targetText = placeholders[nextIdx];
+
+      if (activeEffect === 'typewriter') {
+        var currText = placeholders[currentIndex];
+        var charIdx = currText.length;
+        function typeDelete() {
+          if (charIdx > 0) {
+            charIdx--;
+            overlayEl.innerHTML = escapeHtml(currText.substring(0, charIdx)) + '<span class="ph-caret"></span>';
+            currentRotationTimer = setTimeout(typeDelete, 30);
+          } else {
+            var addIdx = 0;
+            function typeAdd() {
+              if (addIdx <= targetText.length) {
+                overlayEl.innerHTML = escapeHtml(targetText.substring(0, addIdx)) + '<span class="ph-caret"></span>';
+                addIdx++;
+                currentRotationTimer = setTimeout(typeAdd, 45);
+              } else {
+                currentIndex = nextIdx;
+                setTimeout(function () {
+                  overlayEl.innerHTML = escapeHtml(targetText);
+                }, 400);
+                currentRotationTimer = setTimeout(rotateNext, speed);
+              }
+            }
+            typeAdd();
+          }
+        }
+        typeDelete();
+      } else if (activeEffect === 'dissolve') {
+        overlayEl.className = 'launcher-placeholder-overlay ph-effect-dissolve-out';
+        currentRotationTimer = setTimeout(function () {
+          currentIndex = nextIdx;
+          overlayEl.innerHTML = escapeHtml(targetText);
+          overlayEl.className = 'launcher-placeholder-overlay ph-effect-dissolve-in';
+          currentRotationTimer = setTimeout(function () {
+            overlayEl.className = 'launcher-placeholder-overlay';
+            currentRotationTimer = setTimeout(rotateNext, speed);
+          }, 400);
+        }, 400);
+      } else if (activeEffect === 'break') {
+        var letters = overlayEl.querySelectorAll('.ph-break-char');
+        if (letters.length === 0) {
+          var html = '';
+          var str = placeholders[currentIndex];
+          for (var i = 0; i < str.length; i++) {
+            html += '<span class="ph-break-char">' + escapeHtml(str[i] === ' ' ? ' ' : str[i]) + '</span>';
+          }
+          overlayEl.innerHTML = html;
+          letters = overlayEl.querySelectorAll('.ph-break-char');
+        }
+
+        letters.forEach(function (span) {
+          var rx = (Math.random() - 0.5) * 60;
+          var ry = (Math.random() - 0.5) * 40 - 20;
+          var rdeg = (Math.random() - 0.5) * 90;
+          span.style.transform = 'translate(' + rx + 'px, ' + ry + 'px) rotate(' + rdeg + 'deg)';
+          span.classList.add('scattered');
+        });
+
+        currentRotationTimer = setTimeout(function () {
+          currentIndex = nextIdx;
+          var nextHtml = '';
+          for (var j = 0; j < targetText.length; j++) {
+            var rx = (Math.random() - 0.5) * 60;
+            var ry = (Math.random() - 0.5) * 40 + 20;
+            var rdeg = (Math.random() - 0.5) * 90;
+            nextHtml += '<span class="ph-break-char scattered" style="transform: translate(' + rx + 'px, ' + ry + 'px) rotate(' + rdeg + 'deg);">' + escapeHtml(targetText[j] === ' ' ? ' ' : targetText[j]) + '</span>';
+          }
+          overlayEl.innerHTML = nextHtml;
+
+          requestAnimationFrame(function () {
+            setTimeout(function () {
+              var newSpans = overlayEl.querySelectorAll('.ph-break-char');
+              newSpans.forEach(function (s) {
+                s.style.transform = 'translate(0,0) rotate(0deg)';
+                s.classList.remove('scattered');
+              });
+              currentRotationTimer = setTimeout(function () {
+                overlayEl.innerHTML = escapeHtml(targetText);
+                currentRotationTimer = setTimeout(rotateNext, speed);
+              }, 450);
+            }, 30);
+          });
+        }, 450);
+      } else if (activeEffect === 'clip') {
+        overlayEl.className = 'launcher-placeholder-overlay ph-effect-clip-out';
+        currentRotationTimer = setTimeout(function () {
+          currentIndex = nextIdx;
+          overlayEl.innerHTML = escapeHtml(targetText);
+          overlayEl.className = 'launcher-placeholder-overlay ph-effect-clip-in';
+          currentRotationTimer = setTimeout(function () {
+            overlayEl.className = 'launcher-placeholder-overlay';
+            currentRotationTimer = setTimeout(rotateNext, speed);
+          }, 450);
+        }, 450);
+      } else if (activeEffect === 'vertical-slide') {
+        overlayEl.className = 'launcher-placeholder-overlay ph-effect-slide-out';
+        currentRotationTimer = setTimeout(function () {
+          currentIndex = nextIdx;
+          overlayEl.innerHTML = escapeHtml(targetText);
+          overlayEl.className = 'launcher-placeholder-overlay ph-effect-slide-in';
+          currentRotationTimer = setTimeout(function () {
+            overlayEl.className = 'launcher-placeholder-overlay';
+            currentRotationTimer = setTimeout(rotateNext, speed);
+          }, 350);
+        }, 350);
+      }
+    }
+
+    currentRotationTimer = setTimeout(rotateNext, speed);
+  }
+
   function renderLauncher() {
     updateHostPosition(config.position || 'bottom-center');
     styleTag.textContent = getStyles(config);
@@ -555,7 +839,10 @@
         <div class="launcher-bar ${themeClass}" id="btn-open-launcher-bar">
           ${wavesHtml}
           ${sparkSvg}
-          <input type="text" id="bar-input-field" placeholder="${config.launcherPlaceholder || 'Ask me anything...'}" />
+          <div class="launcher-bar-input-wrapper">
+            <input type="text" id="bar-input-field" placeholder="" />
+            <div class="launcher-placeholder-overlay" id="placeholder-overlay"></div>
+          </div>
           <button class="bar-submit-btn" id="btn-bar-submit">${sendSvg}</button>
         </div>
       ` + wrapEnd;
@@ -572,6 +859,8 @@
       inputEl.onkeydown = function (e) {
         if (e.key === 'Enter') triggerFromBar();
       };
+
+      initPlaceholderRotation(launcherContainer);
     }
 
     if (config.enableParticleTrail) {

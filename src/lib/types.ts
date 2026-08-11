@@ -20,6 +20,9 @@ export interface WebsiteConfig {
   launcherStyle?: 'circle' | 'pill' | 'bar' | 'tab';
   launcherText?: string;
   launcherPlaceholder?: string;
+  launcherPlaceholders?: string[];
+  placeholderEffect?: 'typewriter' | 'dissolve' | 'break' | 'clip' | 'vertical-slide' | 'random' | 'none';
+  placeholderSpeed?: number;
   launcherAnimation?: 'none' | 'pulse' | 'glow' | 'bounce' | 'float';
   launcherTheme?: 'solid' | 'cosmic' | 'sunset' | 'ocean' | 'rainbow' | 'glass';
   enableParticleTrail?: boolean;

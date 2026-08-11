@@ -42,6 +42,14 @@ const defaultSite: WebsiteConfig = {
   launcherStyle: 'bar',
   launcherText: 'Ask AI anything...',
   launcherPlaceholder: 'Type your question...',
+  launcherPlaceholders: [
+    'Ask me anything...',
+    'How do I get started?',
+    'What are your pricing plans?',
+    'Book a live product demo...'
+  ],
+  placeholderEffect: 'random',
+  placeholderSpeed: 3500,
   launcherAnimation: 'none',
   launcherTheme: 'solid',
   enableParticleTrail: false,
