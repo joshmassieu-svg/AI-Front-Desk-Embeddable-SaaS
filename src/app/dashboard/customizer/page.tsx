@@ -158,8 +158,10 @@ function RotatingPlaceholderPreview({
   const [displayText, setDisplayText] = useState(list[0] || fallback);
   const [animClass, setAnimClass] = useState('');
   const [isTypingCaret, setIsTypingCaret] = useState(false);
-  const [scattered, setScattered] = useState(false);
-  const [letterTransforms, setLetterTransforms] = useState<{ rx: number; ry: number; rdeg: number }[]>([]);
+  // Break apart states
+  const [breakPhase, setBreakPhase] = useState<'idle' | 'out' | 'in'>('idle');
+  const [breakChars, setBreakChars] = useState<{ char: string; rx: number; ry: number; rdeg: number; rscale: number }[]>([]);
+  const [breakInActive, setBreakInActive] = useState(false);
 
   useEffect(() => {
     setCurrentIndex(0);
@@ -170,6 +172,7 @@ function RotatingPlaceholderPreview({
     if (effect === 'none' || list.length <= 1) {
       setDisplayText(list[0] || fallback);
       setAnimClass('');
+      setBreakPhase('idle');
       return;
     }
 
@@ -220,32 +223,43 @@ function RotatingPlaceholderPreview({
           }, 400);
         }, 400);
       } else if (activeEffect === 'break') {
+        // --- PHASE 1: OUT (Shatter / Explode current text outward) ---
         const currStr = list[currentIndex] || fallback;
-        const transforms = currStr.split('').map(() => ({
-          rx: (Math.random() - 0.5) * 60,
-          ry: (Math.random() - 0.5) * 40 - 20,
-          rdeg: (Math.random() - 0.5) * 90,
+        const outChars = currStr.split('').map((char) => ({
+          char,
+          rx: (Math.random() - 0.5) * 120,
+          ry: (Math.random() - 0.5) * 80 - 20,
+          rdeg: (Math.random() - 0.5) * 180,
+          rscale: 0.5 + Math.random() * 0.8,
         }));
-        setLetterTransforms(transforms);
-        setScattered(true);
+        setBreakChars(outChars);
+        setBreakPhase('out');
 
+        // --- PHASE 2: IN (Fly in / Converge target text inward) ---
         timer = setTimeout(() => {
-          setCurrentIndex(nextIdx);
-          setDisplayText(targetText);
-          const newTransforms = targetText.split('').map(() => ({
-            rx: (Math.random() - 0.5) * 60,
-            ry: (Math.random() - 0.5) * 40 + 20,
-            rdeg: (Math.random() - 0.5) * 90,
+          const inChars = targetText.split('').map((char) => ({
+            char,
+            rx: (Math.random() - 0.5) * 120,
+            ry: (Math.random() - 0.5) * 80 + 20,
+            rdeg: (Math.random() - 0.5) * 180,
+            rscale: 0.5 + Math.random() * 0.8,
           }));
-          setLetterTransforms(newTransforms);
+          setBreakChars(inChars);
+          setBreakPhase('in');
+          setBreakInActive(false);
 
           setTimeout(() => {
-            setScattered(false);
+            setBreakInActive(true);
+
             timer = setTimeout(() => {
+              setCurrentIndex(nextIdx);
+              setDisplayText(targetText);
+              setBreakPhase('idle');
+              setBreakInActive(false);
               timer = setTimeout(runNext, speed);
             }, 450);
-          }, 50);
-        }, 450);
+          }, 30);
+        }, 400);
       } else if (activeEffect === 'clip') {
         setAnimClass('ph-effect-clip-out');
         timer = setTimeout(() => {
@@ -276,25 +290,50 @@ function RotatingPlaceholderPreview({
     return () => clearTimeout(timer);
   }, [currentIndex, list, effect, speed]);
 
-  if (effect === 'break' && scattered) {
+  if (breakPhase === 'out') {
     return (
       <span className="truncate flex-1 text-[11px] relative z-10 text-slate-400">
-        {displayText.split('').map((char, i) => {
-          const t = letterTransforms[i] || { rx: 0, ry: 0, rdeg: 0 };
-          return (
-            <span
-              key={i}
-              className="inline-block transition-all duration-450"
-              style={{
-                transform: `translate(${t.rx}px, ${t.ry}px) rotate(${t.rdeg}deg)`,
-                opacity: 0,
-                filter: 'blur(4px)',
-              }}
-            >
-              {char === ' ' ? '\u00A0' : char}
-            </span>
-          );
-        })}
+        {breakChars.map((item, i) => (
+          <span
+            key={i}
+            className="inline-block transition-all duration-400 ease-out"
+            style={{
+              transform: `translate(${item.rx}px, ${item.ry}px) rotate(${item.rdeg}deg) scale(${item.rscale})`,
+              opacity: 0,
+              filter: 'blur(8px)',
+            }}
+          >
+            {item.char === ' ' ? '\u00A0' : item.char}
+          </span>
+        ))}
+      </span>
+    );
+  }
+
+  if (breakPhase === 'in') {
+    return (
+      <span className="truncate flex-1 text-[11px] relative z-10 text-slate-400">
+        {breakChars.map((item, i) => (
+          <span
+            key={i}
+            className="inline-block transition-all duration-400 ease-out"
+            style={
+              breakInActive
+                ? {
+                    transform: 'translate(0px, 0px) rotate(0deg) scale(1)',
+                    opacity: 1,
+                    filter: 'blur(0px)',
+                  }
+                : {
+                    transform: `translate(${item.rx}px, ${item.ry}px) rotate(${item.rdeg}deg) scale(${item.rscale})`,
+                    opacity: 0,
+                    filter: 'blur(8px)',
+                  }
+            }
+          >
+            {item.char === ' ' ? '\u00A0' : item.char}
+          </span>
+        ))}
       </span>
     );
   }

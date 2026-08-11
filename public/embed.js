@@ -328,15 +328,15 @@
         100% { opacity: 1; filter: blur(0px); transform: scale(1); }
       }
 
-      /* Break Apart Effect */
+      /* Break Apart Effect (OUT and IN phases) */
       .ph-break-char {
         display: inline-block;
-        transition: transform 0.45s ease, opacity 0.45s ease, filter 0.45s ease;
-        will-change: transform, opacity;
+        transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s ease, filter 0.4s ease;
+        will-change: transform, opacity, filter;
       }
       .ph-break-char.scattered {
-        opacity: 0;
-        filter: blur(4px);
+        opacity: 0 !important;
+        filter: blur(8px) !important;
       }
 
       /* Linear Clip Mask Effect */
@@ -710,42 +710,47 @@
           }, 400);
         }, 400);
       } else if (activeEffect === 'break') {
-        var letters = overlayEl.querySelectorAll('.ph-break-char');
-        if (letters.length === 0) {
-          var html = '';
-          var str = placeholders[currentIndex];
-          for (var i = 0; i < str.length; i++) {
-            html += '<span class="ph-break-char">' + escapeHtml(str[i] === ' ' ? ' ' : str[i]) + '</span>';
-          }
-          overlayEl.innerHTML = html;
-          letters = overlayEl.querySelectorAll('.ph-break-char');
+        // --- PHASE 1: OUT (Explode / Scatter current text outward) ---
+        var currStr = placeholders[currentIndex];
+        var outHtml = '';
+        for (var i = 0; i < currStr.length; i++) {
+          var ch = currStr[i] === ' ' ? '&nbsp;' : escapeHtml(currStr[i]);
+          outHtml += '<span class="ph-break-char">' + ch + '</span>';
         }
+        overlayEl.innerHTML = outHtml;
+        void overlayEl.offsetHeight; // force reflow
 
-        letters.forEach(function (span) {
-          var rx = (Math.random() - 0.5) * 60;
-          var ry = (Math.random() - 0.5) * 40 - 20;
-          var rdeg = (Math.random() - 0.5) * 90;
-          span.style.transform = 'translate(' + rx + 'px, ' + ry + 'px) rotate(' + rdeg + 'deg)';
+        var outSpans = overlayEl.querySelectorAll('.ph-break-char');
+        outSpans.forEach(function (span) {
+          var rx = (Math.random() - 0.5) * 120;
+          var ry = (Math.random() - 0.5) * 80 - 20;
+          var rdeg = (Math.random() - 0.5) * 180;
+          var rscale = 0.5 + Math.random() * 0.8;
+          span.style.transform = 'translate(' + rx + 'px, ' + ry + 'px) rotate(' + rdeg + 'deg) scale(' + rscale + ')';
           span.classList.add('scattered');
         });
 
+        // --- PHASE 2: IN (Fly in & Converge target text inward) ---
         currentRotationTimer = setTimeout(function () {
           currentIndex = nextIdx;
-          var nextHtml = '';
+          var inHtml = '';
           for (var j = 0; j < targetText.length; j++) {
-            var rx = (Math.random() - 0.5) * 60;
-            var ry = (Math.random() - 0.5) * 40 + 20;
-            var rdeg = (Math.random() - 0.5) * 90;
-            nextHtml += '<span class="ph-break-char scattered" style="transform: translate(' + rx + 'px, ' + ry + 'px) rotate(' + rdeg + 'deg);">' + escapeHtml(targetText[j] === ' ' ? ' ' : targetText[j]) + '</span>';
+            var ch = targetText[j] === ' ' ? '&nbsp;' : escapeHtml(targetText[j]);
+            var rx = (Math.random() - 0.5) * 120;
+            var ry = (Math.random() - 0.5) * 80 + 20;
+            var rdeg = (Math.random() - 0.5) * 180;
+            var rscale = 0.5 + Math.random() * 0.8;
+            inHtml += '<span class="ph-break-char scattered" style="transform: translate(' + rx + 'px, ' + ry + 'px) rotate(' + rdeg + 'deg) scale(' + rscale + ');">' + ch + '</span>';
           }
-          overlayEl.innerHTML = nextHtml;
+          overlayEl.innerHTML = inHtml;
+          void overlayEl.offsetHeight; // force reflow
 
           requestAnimationFrame(function () {
             setTimeout(function () {
-              var newSpans = overlayEl.querySelectorAll('.ph-break-char');
-              newSpans.forEach(function (s) {
-                s.style.transform = 'translate(0,0) rotate(0deg)';
-                s.classList.remove('scattered');
+              var inSpans = overlayEl.querySelectorAll('.ph-break-char');
+              inSpans.forEach(function (span) {
+                span.style.transform = 'translate(0px, 0px) rotate(0deg) scale(1)';
+                span.classList.remove('scattered');
               });
               currentRotationTimer = setTimeout(function () {
                 overlayEl.innerHTML = escapeHtml(targetText);
@@ -753,7 +758,7 @@
               }, 450);
             }, 30);
           });
-        }, 450);
+        }, 400);
       } else if (activeEffect === 'clip') {
         overlayEl.className = 'launcher-placeholder-overlay ph-effect-clip-out';
         currentRotationTimer = setTimeout(function () {
