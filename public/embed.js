@@ -272,7 +272,7 @@
         height: 100%;
         background: transparent;
         border: none;
-        color: #f8fafc;
+        color: #94a3b8; /* Darker slate gray (darker than cbd5e1) */
         font-size: 14px;
         outline: none;
         position: relative;
@@ -289,7 +289,7 @@
         display: flex;
         align-items: center;
         pointer-events: none;
-        color: #94a3b8;
+        color: #64748b; /* Slightly muted placeholder for contrast against input text */
         font-size: 14px;
         white-space: nowrap;
         overflow: hidden;
@@ -900,9 +900,6 @@
     fetch(configUrl, fetchOptions)
       .then(function (res) {
         if (!res.ok) {
-          // 503 = server told us this is transient (e.g. cold-start hiccup),
-          // as opposed to 404 which means the site genuinely wasn't found.
-          // Only the former is worth a single quick retry.
           var err = new Error('HTTP error ' + res.status + ' (' + res.statusText + ')');
           (err).status = res.status;
           throw err;
