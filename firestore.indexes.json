@@ -1,0 +1,19 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "knowledgeChunks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "websiteId", "order": "ASCENDING" },
+        {
+          "fieldPath": "embedding",
+          "vectorConfig": {
+            "dimension": 768,
+            "flat": {}
+          }
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
