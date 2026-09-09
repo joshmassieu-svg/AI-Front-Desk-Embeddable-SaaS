@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
-import { Bot, Mail, ArrowRight, ArrowLeft, AlertCircle, Loader2, CheckCircle2, Sparkles } from 'lucide-react';
+import { Bot, Mail, ArrowRight, ArrowLeft, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -28,9 +28,10 @@ export default function ForgotPasswordPage() {
       setIsSubmitted(true);
     } catch (err: any) {
       console.error('Password reset error:', err);
-      if (err.code === 'auth/user-not-found') {
-        setError('No account found with this email address.');
-      } else if (err.code === 'auth/invalid-email') {
+      // BUG-005 — auth/user-not-found is deprecated in Firebase v9+;
+      // sendPasswordResetEmail silently succeeds to prevent email enumeration.
+      // Only handle errors that are actually thrown by the SDK.
+      if (err.code === 'auth/invalid-email') {
         setError('Invalid email address format.');
       } else if (err.code === 'auth/too-many-requests') {
         setError('Too many requests. Please wait a few minutes before trying again.');
@@ -48,14 +49,14 @@ export default function ForgotPasswordPage() {
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-[#fef08a]/40 blur-[130px] pointer-events-none rounded-full" />
       <div className="absolute bottom-10 right-10 w-[400px] h-[400px] bg-[#fbcfe8]/45 blur-[120px] pointer-events-none rounded-full" />
 
-      {/* Brand Header */}
+      {/* Brand Header — BUG-010: unified logo (Bot icon + gradient) */}
       <div className="mb-8 text-center z-10">
         <Link href="/" className="inline-flex items-center gap-3 mb-4 group">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-pink-400 to-amber-300 flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
             <Bot className="w-7 h-7 text-slate-900" />
           </div>
           <span className="font-extrabold text-2xl tracking-tight text-slate-950">
-            Flowdexx <span className="text-pink-500 font-medium">AI Platform</span>
+            Flowdexx <span className="text-pink-500 font-medium">AI</span>
           </span>
         </Link>
         <h1 className="text-2xl font-bold text-slate-950 tracking-tight">Forgot password?</h1>
@@ -75,13 +76,14 @@ export default function ForgotPasswordPage() {
             </p>
             <div className="pt-4 border-t border-slate-100 flex flex-col gap-3">
               <button
-                onClick={() => setIsSubmitted(false)}
+                onClick={() => { setIsSubmitted(false); setError(null); }}
                 className="text-xs text-slate-500 hover:text-slate-800 transition"
               >
                 Didn't receive the email? <span className="text-pink-600 underline font-medium">Try again</span>
               </button>
+              {/* BUG-009 (part 2) — pass ?reset=sent so login page shows a success banner */}
               <Link
-                href="/login"
+                href="/login?reset=sent"
                 className="inline-flex items-center justify-center gap-2 py-3 px-4 bg-slate-50 hover:bg-pink-50/50 border border-slate-200 rounded-xl text-slate-800 text-sm font-semibold transition mt-2"
               >
                 <ArrowLeft className="w-4 h-4" /> Back to sign in
@@ -99,17 +101,19 @@ export default function ForgotPasswordPage() {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-2">
+                <label htmlFor="reset-email" className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-2">
                   Email Address
                 </label>
                 <div className="relative">
                   <Mail className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
+                    id="reset-email"
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@company.com"
+                    autoComplete="email"
                     className="w-full bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-pink-400 focus:ring-4 focus:ring-pink-500/10 transition"
                   />
                 </div>
@@ -132,12 +136,20 @@ export default function ForgotPasswordPage() {
               </button>
             </form>
 
-            <div className="mt-6 pt-6 border-t border-slate-100 text-center">
+            <div className="mt-6 pt-6 border-t border-slate-100 flex items-center justify-between">
               <Link
                 href="/login"
                 className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-slate-900 transition"
               >
                 <ArrowLeft className="w-4 h-4" /> Back to sign in
+              </Link>
+
+              {/* BUG-017 — link to signup page */}
+              <Link
+                href="/signup"
+                className="text-xs font-semibold text-slate-500 hover:text-pink-600 transition"
+              >
+                Create an account
               </Link>
             </div>
           </>

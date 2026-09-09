@@ -2,14 +2,23 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 
+// BUG-014 — No hardcoded fallback credentials. All values must be supplied via
+// environment variables. Missing config will throw clearly at startup rather
+// than silently using production keys in CI or staging environments.
+const required = (key: string): string => {
+  const value = process.env[key];
+  if (!value) throw new Error(`Missing required environment variable: ${key}`);
+  return value;
+};
+
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyBb6iKPi8Rm5NH7Xoc1RNBPNaOVwbPvgmY",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "tanptal.firebaseapp.com",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "tanptal",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "tanptal.firebasestorage.app",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "758747471917",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:758747471917:web:cbebb9d89423aa846298a4",
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-6KSBFHBK49"
+  apiKey:            required('NEXT_PUBLIC_FIREBASE_API_KEY'),
+  authDomain:        required('NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN'),
+  projectId:         required('NEXT_PUBLIC_FIREBASE_PROJECT_ID'),
+  storageBucket:     required('NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET'),
+  messagingSenderId: required('NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID'),
+  appId:             required('NEXT_PUBLIC_FIREBASE_APP_ID'),
+  measurementId:     process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID, // optional
 };
 
 // Initialize Firebase App singleton

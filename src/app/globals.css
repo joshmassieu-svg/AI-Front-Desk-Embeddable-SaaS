@@ -58,3 +58,95 @@
   background: #D6D3D1;
 }
 
+/* ============================================================
+   Auth Page Animations  (BUG-016 — moved from style jsx global)
+   ============================================================ */
+
+/* Login page — organic mesh */
+@keyframes meshA {
+  0%, 100% { transform: translate3d(-5%, -4%, 0) scale(1); }
+  25%       { transform: translate3d(8%, 4%, 0) scale(1.08); }
+  50%       { transform: translate3d(15%, -5%, 0) scale(0.96); }
+  75%       { transform: translate3d(4%, 8%, 0) scale(1.05); }
+}
+@keyframes meshB {
+  0%, 100% { transform: translate3d(5%, 4%, 0) scale(1); }
+  30%       { transform: translate3d(-8%, 10%, 0) scale(1.1); }
+  60%       { transform: translate3d(-15%, -4%, 0) scale(0.94); }
+  85%       { transform: translate3d(5%, -8%, 0) scale(1.05); }
+}
+@keyframes meshC {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  35%       { transform: translate3d(-10%, -8%, 0) scale(1.12); }
+  70%       { transform: translate3d(12%, 8%, 0) scale(0.92); }
+}
+@keyframes meshD {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  40%       { transform: translate3d(10%, -10%, 0) scale(0.94); }
+  75%       { transform: translate3d(-12%, 8%, 0) scale(1.1); }
+}
+@keyframes meshGlow {
+  0%, 100% { opacity: 0.45; }
+  50%       { opacity: 0.7; }
+}
+
+.mesh-a    { animation: meshA    18s ease-in-out infinite; }
+.mesh-b    { animation: meshB    22s ease-in-out infinite; }
+.mesh-c    { animation: meshC    25s ease-in-out infinite; }
+.mesh-d    { animation: meshD    20s ease-in-out infinite; }
+.mesh-glow { animation: meshGlow 10s ease-in-out infinite; }
+
+/* Signup page — float mesh */
+@keyframes meshFloatOne {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%       { transform: translate3d(60px, -35px, 0) scale(1.1); }
+}
+@keyframes meshFloatTwo {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%       { transform: translate3d(-50px, 45px, 0) scale(1.12); }
+}
+@keyframes meshFloatThree {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%       { transform: translate3d(35px, 50px, 0) scale(0.95); }
+}
+@keyframes meshFloatFour {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%       { transform: translate3d(-40px, -40px, 0) scale(1.05); }
+}
+
+.mesh-one   { animation: meshFloatOne   11s ease-in-out infinite; }
+.mesh-two   { animation: meshFloatTwo   13s ease-in-out infinite; }
+.mesh-three { animation: meshFloatThree 15s ease-in-out infinite; }
+.mesh-four  { animation: meshFloatFour  12s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mesh-a, .mesh-b, .mesh-c, .mesh-d, .mesh-glow,
+  .mesh-one, .mesh-two, .mesh-three, .mesh-four {
+    animation: none !important;
+  }
+}
+
+/* ============================================================
+   Custom checkbox checkmark  (BUG-012 — appearance-none fix)
+   ============================================================ */
+.auth-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.auth-checkbox:checked::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  width: 5px;
+  height: 9px;
+  border: 2px solid #ffffff;
+  border-top: none;
+  border-left: none;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+

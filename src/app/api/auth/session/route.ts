@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { firebaseAuth, firebaseDb } from '@/lib/firebase-admin';
 
 // How long (in seconds) the session cookies live.
-// Firebase ID tokens expire after 1 hour — keep in sync.
-const SESSION_TTL_SECONDS = 60 * 60; // 1 hour
+// BUG-006 — Raised from 1 hour to 7 days. The raw Firebase ID token's actual
+// expiry is still enforced by jwtVerify in middleware.ts; this longer maxAge
+// simply prevents the cookie from disappearing before onIdTokenChanged can
+// refresh it, stopping users from being incorrectly bounced to /login.
+const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days
+
 
 const COOKIE_BASE = {
   httpOnly: true,
