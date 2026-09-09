@@ -1,0 +1,13 @@
+rules_version = '2';
+
+// ⚠️ WIDE OPEN — dev/testing only.
+// Any client (authenticated or not) can read/write every collection.
+// Lock this down before you have real user data or go to production.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
