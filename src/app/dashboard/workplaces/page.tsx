@@ -133,7 +133,7 @@ export default function WorkplacesPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 pt-1">
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
                     {/* Role Badge */}
                     <span
                       className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 ${
@@ -147,6 +147,25 @@ export default function WorkplacesPage() {
                       {role === 'owner' && <Crown className="w-3 h-3 text-amber-500" />}
                       Role: {role}
                     </span>
+
+                    {/* Subscription Plan Badge */}
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-200">
+                      Plan: {wp.plan ? wp.plan.toUpperCase() : 'FREE'}
+                    </span>
+
+                    {/* Trial Tag if active */}
+                    {wp.trialEndsAt && (() => {
+                      const diff = new Date(wp.trialEndsAt).getTime() - Date.now();
+                      const days = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+                      if (days > 0) {
+                        return (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                            Trial: {days}d left
+                          </span>
+                        );
+                      }
+                      return null;
+                    })()}
 
                     <span className="text-[11px] text-slate-500 flex items-center gap-1">
                       <Users className="w-3 h-3 text-slate-400" /> {memberCount} {memberCount === 1 ? 'Member' : 'Members'}

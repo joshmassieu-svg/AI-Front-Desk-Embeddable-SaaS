@@ -186,6 +186,9 @@ export interface AnalyticsSummary {
 
 export type WorkplaceRole = 'owner' | 'admin' | 'member';
 
+export type SubscriptionPlanId = 'free' | 'starter' | 'growth' | 'pro';
+export type BillingCycle = 'monthly' | 'annual';
+
 export interface WorkplaceMember {
   userId: string;
   email: string;
@@ -205,4 +208,5 @@ export interface WorkplaceInvitation {
   createdAt: string;
   expiresAt: string;
 }
+
 

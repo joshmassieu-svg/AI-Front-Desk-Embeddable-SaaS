@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useWebsite } from '@/context/website-context';
 import {
   X,
   Sparkles,
@@ -22,10 +23,31 @@ interface GrowthPromoModalProps {
 
 export function GrowthPromoModal({ isOpen, onClose }: GrowthPromoModalProps) {
   const router = useRouter();
+  const { workplace } = useWebsite();
   const [expiresAtStr, setExpiresAtStr] = useState('');
   const [daysLeft, setDaysLeft] = useState(30);
 
   useEffect(() => {
+    if (!isOpen) return;
+
+    // Use workplace trial expiration from database if available
+    if (workplace?.trialEndsAt) {
+      const expDate = new Date(workplace.trialEndsAt);
+      const now = new Date();
+      const diffTime = expDate.getTime() - now.getTime();
+      const computedDays = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+
+      setDaysLeft(computedDays);
+      setExpiresAtStr(
+        expDate.toLocaleDateString('en-US', {
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric',
+        })
+      );
+      return;
+    }
+
     if (typeof window === 'undefined') return;
 
     let expiresAt = localStorage.getItem('flowdexx_growth_promo_expires_at');
@@ -50,7 +72,7 @@ export function GrowthPromoModal({ isOpen, onClose }: GrowthPromoModalProps) {
         year: 'numeric',
       })
     );
-  }, [isOpen]);
+  }, [isOpen, workplace?.trialEndsAt]);
 
   if (!isOpen) return null;
 

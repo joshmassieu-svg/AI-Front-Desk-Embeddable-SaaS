@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { WebsiteConfig } from '@/lib/types';
+import { WebsiteConfig, SubscriptionPlanId, BillingCycle } from '@/lib/types';
 import { useAuth } from '@/context/auth-context';
 import {
   getOrCreateUserWorkplace,
@@ -12,6 +12,7 @@ import {
   switchUserWorkplaceInFirestore,
   createInitialWebsiteConfig,
   completeOnboardingInFirestore,
+  updateWorkplacePlanInFirestore,
   Workplace,
 } from '@/lib/firestore-service';
 
@@ -25,6 +26,7 @@ interface WebsiteContextType {
   refreshWebsites: () => Promise<void>;
   createWebsite: (name: string, domain: string) => Promise<WebsiteConfig | null>;
   updateWebsite: (updates: Partial<WebsiteConfig>) => Promise<WebsiteConfig | null>;
+  updateWorkplacePlan: (plan: SubscriptionPlanId, billingCycle?: BillingCycle) => Promise<boolean>;
   /**
    * Called from /onboarding Step 1. Creates the user's first real site doc
    * and stamps workplace.onboardedAt in Firestore. Replaces the old pattern
@@ -95,6 +97,7 @@ const WebsiteContext = createContext<WebsiteContextType>({
   refreshWebsites: async () => {},
   createWebsite: async () => null,
   updateWebsite: async () => null,
+  updateWorkplacePlan: async () => false,
   completeOnboarding: async () => null,
 });
 
@@ -355,6 +358,32 @@ export function WebsiteProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateWorkplacePlan = async (
+    plan: SubscriptionPlanId,
+    billingCycle?: BillingCycle
+  ): Promise<boolean> => {
+    if (!workplace) return false;
+    try {
+      const ok = await updateWorkplacePlanInFirestore(workplace.id, plan, billingCycle);
+      if (ok) {
+        setWorkplace((prev) =>
+          prev
+            ? {
+                ...prev,
+                plan,
+                ...(billingCycle ? { planBillingCycle: billingCycle } : {}),
+                updatedAt: new Date().toISOString(),
+              }
+            : null
+        );
+        return true;
+      }
+    } catch (err) {
+      console.error('Error updating workplace plan in context:', err);
+    }
+    return false;
+  };
+
   const currentSite = websites.find((w) => w.id === currentSiteId) || websites[0] || null;
 
   return (
@@ -369,6 +398,7 @@ export function WebsiteProvider({ children }: { children: React.ReactNode }) {
         refreshWebsites,
         createWebsite,
         updateWebsite,
+        updateWorkplacePlan,
         completeOnboarding,
       }}
     >

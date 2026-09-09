@@ -113,11 +113,19 @@ const COMPARISON_ROWS: { label: string; key: keyof PlanDef | 'check_all'; toolti
 ];
 
 export default function BillingPage() {
-  const { currentSiteId } = useWebsite();
+  const { currentSiteId, workplace, updateWorkplacePlan } = useWebsite();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
-  const [currentPlan, setCurrentPlan] = useState<PlanId>('growth');
+  const [isUpdating, setIsUpdating] = useState(false);
   const [convCount, setConvCount] = useState(1420);
   const [kbCount, setKbCount] = useState(18);
+
+  const currentPlan: PlanId = (workplace?.plan as PlanId) || 'free';
+
+  useEffect(() => {
+    if (workplace?.planBillingCycle) {
+      setBillingCycle(workplace.planBillingCycle);
+    }
+  }, [workplace?.planBillingCycle]);
 
   useEffect(() => {
     if (!currentSiteId) return;
@@ -137,35 +145,45 @@ export default function BillingPage() {
       .catch((err) => console.error(err));
   }, [currentSiteId]);
 
-  const activePlanDef = PLANS.find((p) => p.id === currentPlan) || PLANS[2];
+  const activePlanDef = PLANS.find((p) => p.id === currentPlan) || PLANS[0];
   const convLimit = activePlanDef.convLimitNum;
   const kbLimit = currentPlan === 'free' ? 10 : currentPlan === 'starter' ? 50 : currentPlan === 'growth' ? 250 : 1000;
 
-  const [promoExpiresStr, setPromoExpiresStr] = useState('');
-  const [promoDaysRemaining, setPromoDaysRemaining] = useState(30);
+  // Compute trial status from workplace document in database
+  const trialEndsAt = workplace?.trialEndsAt;
+  let promoDaysRemaining = 0;
+  let promoExpiresStr = '';
+  let isTrialActive = false;
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    let expiresAt = localStorage.getItem('flowdexx_growth_promo_expires_at');
-    if (!expiresAt) {
-      const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + 30);
-      expiresAt = futureDate.toISOString();
-      localStorage.setItem('flowdexx_growth_promo_expires_at', expiresAt);
-    }
-    const expDate = new Date(expiresAt);
+  if (trialEndsAt) {
+    const expDate = new Date(trialEndsAt);
     const now = new Date();
     const diffTime = expDate.getTime() - now.getTime();
-    const days = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-    setPromoDaysRemaining(days);
-    setPromoExpiresStr(
-      expDate.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      })
-    );
-  }, []);
+    promoDaysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+    isTrialActive = promoDaysRemaining > 0;
+    promoExpiresStr = expDate.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  }
+
+  const handleSelectPlan = async (planId: PlanId) => {
+    if (planId === currentPlan || isUpdating) return;
+    setIsUpdating(true);
+    try {
+      await updateWorkplacePlan(planId, billingCycle);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleCycleChange = async (cycle: 'monthly' | 'annual') => {
+    setBillingCycle(cycle);
+    if (workplace) {
+      await updateWorkplacePlan(currentPlan, cycle);
+    }
+  };
 
   const convPct = Math.min(100, Number(((convCount / convLimit) * 100).toFixed(1)));
   const kbPct = Math.min(100, Number(((kbCount / kbLimit) * 100).toFixed(1)));
@@ -182,20 +200,20 @@ export default function BillingPage() {
             <div>
               <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Plans & Billing</h2>
               <p className="text-slate-500 text-xs mt-0.5">
-                Manage your subscription tier, usage quotas, and plan features.
+                Manage your subscription tier, usage quotas, and plan features for {workplace?.name || 'your workspace'}.
               </p>
             </div>
           </div>
         </div>
 
-        {/* Current Active Plan Badge */}
+        {/* Current Active Plan Badge & Trial Badge */}
         <div className="flex items-center gap-3">
-          {currentPlan === 'growth' && (
+          {isTrialActive && (
             <div className="bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold px-3.5 py-1.5 rounded-xl flex items-center gap-2 shadow-xs">
               <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-              <span>Free Growth Trial:</span>
-              <span className="font-extrabold text-amber-700">{promoDaysRemaining} Days Left</span>
-              <span className="text-amber-400">({promoExpiresStr})</span>
+              <span>30-Day Free Trial:</span>
+              <span className="font-extrabold text-amber-700">{promoDaysRemaining} {promoDaysRemaining === 1 ? 'Day' : 'Days'} Left</span>
+              {promoExpiresStr && <span className="text-amber-500 font-normal">({promoExpiresStr})</span>}
             </div>
           )}
           <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold px-4 py-2 rounded-xl flex items-center gap-2 shadow-xs">
@@ -279,7 +297,7 @@ export default function BillingPage() {
         {/* Monthly / Annual Toggle */}
         <div className="inline-flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs font-semibold">
           <button
-            onClick={() => setBillingCycle('monthly')}
+            onClick={() => handleCycleChange('monthly')}
             className={`px-4 py-2 rounded-lg transition ${
               billingCycle === 'monthly'
                 ? 'bg-white text-slate-900 shadow-xs font-bold'
@@ -289,7 +307,7 @@ export default function BillingPage() {
             Monthly Billing
           </button>
           <button
-            onClick={() => setBillingCycle('annual')}
+            onClick={() => handleCycleChange('annual')}
             className={`px-4 py-2 rounded-lg transition flex items-center gap-1.5 ${
               billingCycle === 'annual'
                 ? 'bg-white text-slate-900 shadow-xs font-bold'
@@ -367,8 +385,8 @@ export default function BillingPage() {
               </div>
 
               <button
-                onClick={() => setCurrentPlan(plan.id)}
-                disabled={isCurrent}
+                onClick={() => handleSelectPlan(plan.id)}
+                disabled={isCurrent || isUpdating}
                 className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold transition shadow-xs ${
                   isCurrent
                     ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-default'
@@ -377,7 +395,7 @@ export default function BillingPage() {
                     : 'bg-slate-900 hover:bg-slate-800 text-white'
                 }`}
               >
-                {isCurrent ? '✓ Currently Active' : `Select ${plan.name}`}
+                {isCurrent ? '✓ Currently Active' : isUpdating ? 'Updating...' : `Select ${plan.name}`}
               </button>
             </div>
           );

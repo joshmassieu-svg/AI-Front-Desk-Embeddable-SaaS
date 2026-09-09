@@ -11,7 +11,7 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { WebsiteConfig, Lead, KnowledgeItem, WorkplaceMember, WorkplaceInvitation, WorkplaceRole } from './types';
+import { WebsiteConfig, Lead, KnowledgeItem, WorkplaceMember, WorkplaceInvitation, WorkplaceRole, SubscriptionPlanId, BillingCycle } from './types';
 
 export interface UserProfile {
   uid: string;
@@ -27,6 +27,10 @@ export interface Workplace {
   name: string;
   domain: string;
   members?: WorkplaceMember[];
+  plan?: SubscriptionPlanId;
+  planBillingCycle?: BillingCycle;
+  trialStartedAt?: string;
+  trialEndsAt?: string;
   /**
    * @deprecated No longer written for new workplaces. `websites/{id}` is now
    * the single source of truth for site config — this field only appears on
@@ -156,8 +160,29 @@ export async function getOrCreateUserWorkplace(userId: string, email: string): P
       const workplaceSnap = await getDoc(workplaceRef);
 
       if (workplaceSnap.exists()) {
-        const workplace = workplaceSnap.data() as Workplace;
+        let workplace = workplaceSnap.data() as Workplace;
         await migrateLegacyWorkplaceIfNeeded(workplace);
+
+        // Self-heal default free plan & 30-day trial if missing on existing workplace
+        if (!workplace.plan || !workplace.trialEndsAt) {
+          const now = new Date();
+          const trialEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+          const updates: Partial<Workplace> = {
+            plan: workplace.plan || 'free',
+            planBillingCycle: workplace.planBillingCycle || 'monthly',
+            trialStartedAt: workplace.trialStartedAt || workplace.createdAt || now.toISOString(),
+            trialEndsAt: workplace.trialEndsAt || trialEnd.toISOString(),
+            updatedAt: now.toISOString(),
+          };
+          try {
+            await updateDoc(workplaceRef, updates);
+            workplace = { ...workplace, ...updates };
+          } catch (updateErr) {
+            console.warn('Could not self-heal workplace plan:', updateErr);
+            workplace = { ...workplace, ...updates };
+          }
+        }
+
         return workplace;
       }
     }
@@ -168,22 +193,28 @@ export async function getOrCreateUserWorkplace(userId: string, email: string): P
     // orphaned placeholder sites for users who abandon before onboarding.
     const workplaceId = `wp_${userId.substring(0, 8)}_${Date.now()}`;
     const defaultName = email ? `${email.split('@')[0]}'s Workplace` : 'My Workplace';
+    const now = new Date();
+    const trialEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
     const newWorkplace: Workplace = {
       id: workplaceId,
       userId,
       name: defaultName,
       domain: '',
+      plan: 'free',
+      planBillingCycle: 'monthly',
+      trialStartedAt: now.toISOString(),
+      trialEndsAt: trialEnd.toISOString(),
       members: [
         {
           userId,
           email: email || 'owner@workplace.com',
           role: 'owner',
-          joinedAt: new Date().toISOString(),
+          joinedAt: now.toISOString(),
         },
       ],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
     };
 
     // Account metadata only — no site config written yet.
@@ -194,8 +225,8 @@ export async function getOrCreateUserWorkplace(userId: string, email: string): P
       uid: userId,
       email,
       workplaceId,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
     };
     await setDoc(userRef, newUserProfile);
 
@@ -203,15 +234,21 @@ export async function getOrCreateUserWorkplace(userId: string, email: string): P
   } catch (err) {
     console.error('Error fetching/creating user workplace in Firestore:', err);
     // Fallback workplace object if Firestore rules block or offline
+    const now = new Date();
+    const trialEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
     const fallbackId = `wp_${userId}`;
     return {
       id: fallbackId,
       userId,
       name: 'Personal Workplace',
       domain: 'mywebsite.com',
+      plan: 'free',
+      planBillingCycle: 'monthly',
+      trialStartedAt: now.toISOString(),
+      trialEndsAt: trialEnd.toISOString(),
       websiteConfig: createInitialWebsiteConfig(fallbackId, 'Personal Workplace', 'mywebsite.com'),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
     };
   }
 }
@@ -300,8 +337,13 @@ export async function completeOnboardingInFirestore(
   // Write the real site doc
   await setDoc(doc(db, 'websites', workplaceId), websiteConfig);
 
+  // Read existing workplace to preserve plan/trial
+  const wpRef = doc(db, 'workplaces', workplaceId);
+  const wpSnap = await getDoc(wpRef);
+  const existingWp = wpSnap.exists() ? (wpSnap.data() as Workplace) : null;
+
   // Stamp onboardedAt + update domain on the workplace doc
-  await updateDoc(doc(db, 'workplaces', workplaceId), {
+  await updateDoc(wpRef, {
     name: name.trim(),
     domain: cleanedDomain,
     onboardedAt: now,
@@ -309,12 +351,17 @@ export async function completeOnboardingInFirestore(
   });
 
   const updatedWorkplace: Workplace = {
+    ...(existingWp || {}),
     id: workplaceId,
     userId,
     name: name.trim(),
     domain: cleanedDomain,
+    plan: existingWp?.plan || 'free',
+    planBillingCycle: existingWp?.planBillingCycle || 'monthly',
+    trialStartedAt: existingWp?.trialStartedAt || now,
+    trialEndsAt: existingWp?.trialEndsAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     onboardedAt: now,
-    createdAt: now, // approximate — actual createdAt is on the Firestore doc
+    createdAt: existingWp?.createdAt || now,
     updatedAt: now,
   };
 
@@ -332,22 +379,28 @@ export async function createNewWorkplaceWithWebsite(
 ): Promise<{ workplace: Workplace; website: WebsiteConfig }> {
   const workplaceId = `wp_${userId.substring(0, 6)}_${Date.now()}`;
   const cleanDomain = domain.trim().toLowerCase().replace(/^https?:\/\//, '');
+  const now = new Date();
+  const trialEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
   const newWorkplace: Workplace = {
     id: workplaceId,
     userId,
     name: name.trim(),
     domain: cleanDomain,
+    plan: 'free',
+    planBillingCycle: 'monthly',
+    trialStartedAt: now.toISOString(),
+    trialEndsAt: trialEnd.toISOString(),
     members: [
       {
         userId,
         email: email || 'owner@workplace.com',
         role: 'owner',
-        joinedAt: new Date().toISOString(),
+        joinedAt: now.toISOString(),
       },
     ],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
   };
 
   const websiteConfig = createInitialWebsiteConfig(workplaceId, name.trim(), cleanDomain);
@@ -368,6 +421,29 @@ export async function createNewWorkplaceWithWebsite(
   }
 
   return { workplace: newWorkplace, website: websiteConfig };
+}
+
+/**
+ * Update the subscription plan and billing cycle for a workplace in Firestore.
+ */
+export async function updateWorkplacePlanInFirestore(
+  workplaceId: string,
+  plan: SubscriptionPlanId,
+  planBillingCycle?: BillingCycle
+): Promise<boolean> {
+  try {
+    const workplaceRef = doc(db, 'workplaces', workplaceId);
+    const updates: Partial<Workplace> = {
+      plan,
+      ...(planBillingCycle ? { planBillingCycle } : {}),
+      updatedAt: new Date().toISOString(),
+    };
+    await updateDoc(workplaceRef, updates);
+    return true;
+  } catch (err) {
+    console.error('Error updating workplace plan in Firestore:', err);
+    return false;
+  }
 }
 
 /**
