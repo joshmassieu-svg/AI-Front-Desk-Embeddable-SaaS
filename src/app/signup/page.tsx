@@ -15,6 +15,7 @@ import {
   Loader2,
   ArrowUpRight,
   Sparkles,
+  Check,
 } from 'lucide-react';
 
 function SignupFormContent() {
@@ -22,7 +23,6 @@ function SignupFormContent() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  // BUG-004 — separate toggle for confirm field
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +35,7 @@ function SignupFormContent() {
   const fromOnboarding = searchParams?.get('from') === 'onboarding' || searchParams?.get('redirect') === 'onboarding';
 
   useEffect(() => {
-    // Only redirect if user was already logged in on initial page load (and not in the middle of creating account)
+    // Only redirect if user was already logged in on initial page load (and not actively submitting/logging out)
     if (!loading && user && !isSubmitting && !isGoogleSubmitting) {
       router.push('/dashboard/overview');
     }
@@ -49,15 +49,13 @@ function SignupFormContent() {
       const info = getAdditionalUserInfo(cred);
 
       if (info && !info.isNewUser) {
-        // BUG-003 — set isGoogleSubmitting false BEFORE the async logout so
-        // the useEffect can't fire a redirect while we're still processing.
-        setIsGoogleSubmitting(false);
+        // User already has an existing account -> prevent auto-entry via signup page
         await logout();
         setError('An account with this Google email already exists. Please log in instead.');
         return;
       }
 
-      // Explicitly go to onboarding
+      // Fresh user -> forward to onboarding
       window.location.href = '/onboarding';
     } catch (err: any) {
       console.error('Google signup error:', err);
@@ -69,8 +67,6 @@ function SignupFormContent() {
         setError(err.message || 'Failed to sign in with Google.');
       }
     } finally {
-      // BUG-003 — only set false here for the success/error paths (the early-
-      // return path already set it false above before calling logout).
       setIsGoogleSubmitting(false);
     }
   };
@@ -102,7 +98,7 @@ function SignupFormContent() {
     try {
       setIsSubmitting(true);
       await signup(email, password);
-      // Explicitly go to onboarding
+      // Forward to onboarding
       window.location.href = '/onboarding';
     } catch (err: any) {
       console.error('Signup error:', err);
@@ -133,7 +129,6 @@ function SignupFormContent() {
       <div className="min-h-[calc(100vh-1.5rem)] sm:min-h-[calc(100vh-2rem)] lg:min-h-[calc(100vh-2.5rem)] w-full overflow-hidden rounded-[28px] border border-pink-100 bg-white shadow-[0_20px_80px_rgba(244,114,182,0.08)] flex flex-col lg:flex-row">
         {/* =========================================================
             LEFT — ANIMATED MESH (Light Yellow & Light Pink branding)
-            BUG-016: animation classes now come from globals.css
         ========================================================== */}
         <section className="relative hidden lg:flex lg:w-[50%] xl:w-[52%] overflow-hidden bg-[#faf8f5]">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(254,240,138,0.35),transparent_45%),radial-gradient(circle_at_80%_80%,rgba(251,207,232,0.4),transparent_45%)]" />
@@ -152,7 +147,7 @@ function SignupFormContent() {
                   <Bot className="h-6 w-6 text-slate-900" />
                 </div>
                 <span className="text-[17px] font-bold tracking-tight text-slate-950">
-                  Flowdexx <span className="font-medium text-pink-500">AI</span>
+                  Flowdexx <span className="font-medium text-pink-500">AI Platform</span>
                 </span>
               </Link>
             </div>
@@ -208,7 +203,7 @@ function SignupFormContent() {
                   <Bot className="h-6 w-6 text-slate-900" />
                 </div>
                 <span className="text-[17px] font-bold tracking-tight text-slate-950">
-                  Flowdexx <span className="font-medium text-pink-500">AI</span>
+                  Flowdexx <span className="font-medium text-pink-500">AI Platform</span>
                 </span>
               </Link>
             </div>
@@ -233,16 +228,17 @@ function SignupFormContent() {
               </div>
             )}
 
-            {/* Login / Signup tabs — BUG-015: ARIA roles */}
+            {/* Login / Signup tabs */}
             <div
               role="tablist"
-              aria-label="Authentication mode"
+              aria-label="Authentication Options"
               className="mt-8 grid grid-cols-2 rounded-xl bg-amber-50/60 p-1 border border-amber-100"
             >
               <Link
                 href="/login"
                 role="tab"
                 aria-selected="false"
+                onClick={() => setError(null)}
                 className="flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-medium text-slate-500 transition hover:text-slate-900"
               >
                 Log in
@@ -250,8 +246,8 @@ function SignupFormContent() {
               <button
                 type="button"
                 role="tab"
-                aria-current="page"
                 aria-selected="true"
+                aria-current="page"
                 className="rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-sm"
               >
                 Sign up
@@ -364,7 +360,6 @@ function SignupFormContent() {
                 </div>
               </div>
 
-              {/* BUG-004 — Confirm password field now has its own independent toggle */}
               <div>
                 <label htmlFor="confirmPassword" className="mb-2 block text-sm font-medium text-slate-700">
                   Confirm Password
@@ -392,14 +387,16 @@ function SignupFormContent() {
                 </div>
               </div>
 
-              {/* BUG-012 — .auth-checkbox class provides the checkmark via globals.css */}
-              <label className="flex cursor-pointer items-start gap-3 pt-1">
-                <input
-                  type="checkbox"
-                  checked={acceptedTerms}
-                  onChange={(e) => setAcceptedTerms(e.target.checked)}
-                  className="auth-checkbox mt-0.5 h-4 w-4 shrink-0 rounded border border-slate-300 bg-white checked:border-pink-500 checked:bg-pink-500 focus:ring-2 focus:ring-pink-500/20"
-                />
+              <label className="flex cursor-pointer items-start gap-3 pt-1 select-none">
+                <div className="relative flex items-center mt-0.5">
+                  <input
+                    type="checkbox"
+                    checked={acceptedTerms}
+                    onChange={(e) => setAcceptedTerms(e.target.checked)}
+                    className="peer h-4 w-4 shrink-0 cursor-pointer appearance-none rounded border border-slate-300 bg-white transition checked:border-pink-500 checked:bg-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-500/20"
+                  />
+                  <Check className="pointer-events-none absolute left-0 top-0 h-4 w-4 text-white opacity-0 transition-opacity peer-checked:opacity-100 p-0.5" />
+                </div>
                 <span className="text-xs leading-5 text-slate-500">
                   I agree to the{' '}
                   <Link href="/terms" className="font-medium text-slate-700 underline underline-offset-2 hover:text-pink-600">

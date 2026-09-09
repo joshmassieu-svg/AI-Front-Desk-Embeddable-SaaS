@@ -14,35 +14,24 @@ import {
   CheckCircle2,
   Loader2,
   ArrowUpRight,
+  Sparkles,
 } from 'lucide-react';
 
-// ─── Inner form (needs useSearchParams → must be inside Suspense) ────────────
 function LoginFormContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [resetMessage, setResetMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
 
   const { login, loginWithGoogle, user, loading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const resetSuccess = searchParams?.get('reset') === 'success';
 
-  // BUG-009 — populate resetMessage from ?reset=sent query param (set by
-  // forgot-password page after a successful email dispatch).
   useEffect(() => {
-    if (searchParams?.get('reset') === 'sent') {
-      setResetMessage(
-        'Password reset link sent! Check your inbox and follow the link to reset your password.'
-      );
-    }
-  }, [searchParams]);
-
-  // BUG-001 / BUG-002 — single redirect path; guard with isSubmitting flags so
-  // an in-flight login doesn't race with the onIdTokenChanged callback.
-  useEffect(() => {
+    // Only auto-redirect if already authenticated and not in an active submit transaction
     if (!loading && user && !isSubmitting && !isGoogleSubmitting) {
       router.push('/dashboard/overview');
     }
@@ -50,13 +39,11 @@ function LoginFormContent() {
 
   const handleGoogleSignIn = async () => {
     setError(null);
-    setResetMessage(null);
 
     try {
       setIsGoogleSubmitting(true);
       await loginWithGoogle();
-      // BUG-001 — do NOT call router.push here; the useEffect above handles
-      // the redirect once `user` is set, avoiding a double navigation.
+      router.push('/dashboard/overview');
     } catch (err: any) {
       console.error('Google login error:', err);
 
@@ -75,7 +62,6 @@ function LoginFormContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setResetMessage(null);
 
     if (!email || !password) {
       setError('Please fill in all fields.');
@@ -85,8 +71,7 @@ function LoginFormContent() {
     try {
       setIsSubmitting(true);
       await login(email, password);
-      // BUG-001 — do NOT call router.push here; the useEffect above handles
-      // the redirect once `user` is set, avoiding a double navigation.
+      router.push('/dashboard/overview');
     } catch (err: any) {
       console.error('Login error:', err);
 
@@ -113,138 +98,75 @@ function LoginFormContent() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
-        <Loader2 className="w-7 h-7 text-[#ec4899] animate-spin" />
+        <Loader2 className="w-7 h-7 text-pink-500 animate-spin" />
       </div>
     );
   }
 
   return (
     <main className="min-h-screen bg-white p-3 sm:p-4 lg:p-5">
-      <div className="min-h-[calc(100vh-1.5rem)] sm:min-h-[calc(100vh-2rem)] lg:min-h-[calc(100vh-2.5rem)] w-full overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_20px_80px_rgba(15,23,42,0.06)] flex flex-col lg:flex-row">
+      <div className="min-h-[calc(100vh-1.5rem)] sm:min-h-[calc(100vh-2rem)] lg:min-h-[calc(100vh-2.5rem)] w-full overflow-hidden rounded-[28px] border border-pink-100 bg-white shadow-[0_20px_80px_rgba(244,114,182,0.08)] flex flex-col lg:flex-row">
 
         {/* =========================================================
             LEFT — BRAND / ANIMATED MESH
         ========================================================== */}
-        <section className="relative hidden lg:flex lg:w-[50%] xl:w-[52%] overflow-hidden bg-[#f5f5ef]">
+        <section className="relative hidden lg:flex lg:w-[50%] xl:w-[52%] overflow-hidden bg-[#faf8f5]">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(254,240,138,0.35),transparent_45%),radial-gradient(circle_at_80%_80%,rgba(251,207,232,0.4),transparent_45%)]" />
 
-          {/* Base */}
-          <div className="absolute inset-0 bg-[#f5f5ef]" />
+          <div className="absolute -left-28 -top-28 h-[520px] w-[520px] rounded-full bg-[#fef08a]/60 blur-[70px] mesh-one" />
+          <div className="absolute left-[20%] top-[15%] h-[460px] w-[460px] rounded-full bg-[#fbcfe8]/70 blur-[80px] mesh-two" />
+          <div className="absolute -right-28 top-[25%] h-[540px] w-[540px] rounded-full bg-[#fef9c3]/75 blur-[85px] mesh-three" />
+          <div className="absolute -bottom-36 left-[8%] h-[580px] w-[580px] rounded-full bg-[#fce7f3]/80 blur-[90px] mesh-four" />
 
-          {/* Organic mesh — classes now come from globals.css (BUG-016) */}
-          <div
-            className="mesh-a absolute -left-[18%] -top-[15%] h-[75%] w-[75%] rounded-full blur-[90px]"
-            style={{
-              background:
-                'radial-gradient(circle, rgba(205,225,188,0.95) 0%, rgba(205,225,188,0.55) 38%, transparent 72%)',
-            }}
-          />
-
-          <div
-            className="mesh-b absolute left-[18%] -top-[8%] h-[70%] w-[70%] rounded-full blur-[100px]"
-            style={{
-              background:
-                'radial-gradient(circle, rgba(248,215,221,0.9) 0%, rgba(248,215,221,0.5) 42%, transparent 75%)',
-            }}
-          />
-
-          <div
-            className="mesh-c absolute -right-[22%] top-[18%] h-[78%] w-[78%] rounded-full blur-[105px]"
-            style={{
-              background:
-                'radial-gradient(circle, rgba(211,195,244,0.92) 0%, rgba(211,195,244,0.5) 40%, transparent 74%)',
-            }}
-          />
-
-          <div
-            className="mesh-d absolute -bottom-[25%] -left-[5%] h-[78%] w-[78%] rounded-full blur-[105px]"
-            style={{
-              background:
-                'radial-gradient(circle, rgba(249,202,207,0.9) 0%, rgba(249,202,207,0.5) 40%, transparent 75%)',
-            }}
-          />
-
-          {/* Warm center */}
-          <div
-            className="mesh-glow absolute left-[25%] top-[35%] h-[55%] w-[55%] rounded-full blur-[120px]"
-            style={{
-              background:
-                'radial-gradient(circle, rgba(255,229,194,0.65) 0%, rgba(255,229,194,0.2) 48%, transparent 75%)',
-            }}
-          />
-
-          {/* Soft white diffusion */}
-          <div className="absolute inset-0 bg-white/10" />
-
-          {/* Fine mesh texture */}
-          <div
-            className="absolute inset-0 opacity-[0.13]"
-            style={{
-              backgroundImage: `
-                radial-gradient(circle at 20% 30%, rgba(255,255,255,0.9) 0 1px, transparent 1.5px),
-                radial-gradient(circle at 70% 65%, rgba(255,255,255,0.8) 0 1px, transparent 1.5px)
-              `,
-              backgroundSize: '24px 24px, 30px 30px',
-            }}
-          />
+          <div className="absolute inset-0 bg-white/20 backdrop-blur-[2px]" />
 
           {/* Brand content */}
           <div className="relative z-10 flex min-h-full w-full flex-col justify-between p-12 xl:p-16">
-
-            {/* Brand — BUG-010: unified logo (Bot icon + gradient) */}
             <div>
-              <Link
-                href="/"
-                className="inline-flex items-center gap-3 group"
-              >
+              <Link href="/" className="inline-flex items-center gap-3 group">
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-tr from-pink-400 to-amber-300 shadow-md transition-transform duration-300 group-hover:scale-105">
                   <Bot className="h-6 w-6 text-slate-900" />
                 </div>
-
                 <span className="text-[17px] font-bold tracking-tight text-slate-950">
-                  Flowdexx{' '}
-                  <span className="font-medium text-pink-500">
-                    AI
-                  </span>
+                  Flowdexx <span className="font-medium text-pink-500">AI Platform</span>
                 </span>
               </Link>
             </div>
 
             {/* Main copy */}
-            <div className="max-w-[570px] pb-8 xl:pb-12">
+            <div className="max-w-[580px] pb-8 xl:pb-12">
+              <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-pink-200/80 bg-white/70 px-4 py-2 text-xs font-semibold text-slate-800 shadow-sm backdrop-blur-md">
+                <Sparkles className="h-3.5 w-3.5 text-pink-500" />
+                Intelligent Front Desk AI Agents
+              </div>
 
-              <h2 className="max-w-[550px] text-[42px] font-bold leading-[1.04] tracking-[-0.05em] text-slate-950 xl:text-[54px]">
-                A better way to
-                <br />
-                grow your business
+              <h2 className="max-w-[560px] text-[42px] font-bold leading-[1.05] tracking-[-0.04em] text-slate-950 xl:text-[52px]">
+                A better way to grow your{' '}
                 <span className="relative inline-block">
-                  .
-                  <span className="absolute -bottom-1 -left-1 h-[7px] w-8 rotate-[-3deg] rounded-full bg-[#c8d8bb]" />
+                  business.
+                  <span className="absolute -bottom-1 left-0 h-2.5 w-full -rotate-1 rounded-full bg-gradient-to-r from-pink-200 to-amber-200/80" />
                 </span>
               </h2>
 
-              <p className="mt-6 max-w-[480px] text-[16px] leading-7 text-slate-600">
-                Bring your business, customers, and everyday work together
-                in one simple place.
+              <p className="mt-6 max-w-[490px] text-[16px] leading-7 text-slate-600">
+                Bring your business knowledge, live customer chats, and automated lead capture together in one unified dashboard.
               </p>
             </div>
 
-            {/* Bottom visual element */}
+            {/* Bottom badge */}
             <div className="relative mt-auto flex items-end justify-between">
-
-              <div className="rounded-2xl border border-white/70 bg-white/45 px-5 py-4 shadow-[0_15px_45px_rgba(15,23,42,0.07)] backdrop-blur-xl">
+              <div className="rounded-2xl border border-white/80 bg-white/70 px-5 py-4 shadow-[0_15px_40px_rgba(251,207,232,0.3)] backdrop-blur-xl">
                 <p className="text-sm font-semibold text-slate-900">
-                  Built for modern teams
+                  Built for modern businesses
                 </p>
-
                 <p className="mt-1 text-xs text-slate-500">
-                  Simple tools. Clear workflows.
+                  Live AI answers • Zero-code embed • Fast sync
                 </p>
               </div>
 
-              <div className="hidden xl:flex h-20 w-20 items-center justify-center rounded-full border border-white/60 bg-white/20 backdrop-blur-md">
+              <div className="hidden xl:flex h-16 w-16 items-center justify-center rounded-full border border-white/70 bg-white/50 shadow-sm backdrop-blur-md">
                 <ArrowUpRight className="h-6 w-6 text-slate-700" />
               </div>
-
             </div>
           </div>
         </section>
@@ -253,24 +175,16 @@ function LoginFormContent() {
             RIGHT — AUTHENTICATION
         ========================================================== */}
         <section className="flex min-h-[calc(100vh-1.5rem)] flex-1 items-center justify-center bg-white px-5 py-10 sm:px-10 lg:min-h-0 lg:px-12 xl:px-20">
-
           <div className="w-full max-w-[440px]">
 
-            {/* Mobile brand — BUG-010: unified logo */}
+            {/* Mobile brand */}
             <div className="mb-8 flex justify-center lg:hidden">
-              <Link
-                href="/"
-                className="inline-flex items-center gap-3"
-              >
+              <Link href="/" className="inline-flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-tr from-pink-400 to-amber-300 shadow-md">
                   <Bot className="h-6 w-6 text-slate-900" />
                 </div>
-
                 <span className="text-[17px] font-bold tracking-tight text-slate-950">
-                  Flowdexx{' '}
-                  <span className="font-medium text-pink-500">
-                    AI
-                  </span>
+                  Flowdexx <span className="font-medium text-pink-500">AI Platform</span>
                 </span>
               </Link>
             </div>
@@ -280,24 +194,22 @@ function LoginFormContent() {
               <h1 className="text-[29px] font-bold tracking-[-0.035em] text-slate-950">
                 Welcome back
               </h1>
-
               <p className="mt-2 text-sm text-slate-500">
                 Sign in to continue to your account
               </p>
             </div>
 
-            {/* Tab switcher — BUG-007: clears error on switch; BUG-015: ARIA roles */}
+            {/* Login / signup tab switcher */}
             <div
               role="tablist"
-              aria-label="Authentication mode"
-              className="mt-8 grid grid-cols-2 rounded-xl bg-slate-100 p-1"
+              aria-label="Authentication Options"
+              className="mt-8 grid grid-cols-2 rounded-xl bg-amber-50/60 p-1 border border-amber-100"
             >
-
               <button
                 type="button"
                 role="tab"
-                aria-current="page"
                 aria-selected="true"
+                aria-current="page"
                 className="rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-sm"
               >
                 Log in
@@ -307,39 +219,38 @@ function LoginFormContent() {
                 href="/signup"
                 role="tab"
                 aria-selected="false"
-                onClick={() => { setError(null); setResetMessage(null); }}
+                onClick={() => setError(null)}
                 className="flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-medium text-slate-500 transition hover:text-slate-900"
               >
                 Sign up
               </Link>
-
             </div>
 
-            {/* Error */}
+            {/* Error Message */}
             {error && (
-              <div className="mt-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-3.5 text-sm text-red-600">
-                <AlertCircle className="mt-0.5 h-4.5 w-4.5 shrink-0" />
+              <div className="mt-6 flex items-start gap-3 rounded-xl border border-pink-200 bg-pink-50/70 p-3.5 text-sm text-pink-700">
+                <AlertCircle className="mt-0.5 h-4.5 w-4.5 shrink-0 text-pink-500" />
                 <span>{error}</span>
               </div>
             )}
 
-            {/* Reset message — BUG-008: CheckCircle2 instead of AlertCircle */}
-            {resetMessage && (
-              <div className="mt-6 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-sm text-emerald-600">
-                <CheckCircle2 className="mt-0.5 h-4.5 w-4.5 shrink-0" />
-                <span>{resetMessage}</span>
+            {/* Password Reset Confirmation Banner */}
+            {resetSuccess && (
+              <div className="mt-6 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50/90 p-3.5 text-sm text-emerald-700">
+                <CheckCircle2 className="mt-0.5 h-4.5 w-4.5 shrink-0 text-emerald-600" />
+                <span>Password reset instructions were sent. Please sign in with your updated password once complete.</span>
               </div>
             )}
 
-            {/* Google */}
+            {/* Google Sign In */}
             <button
               type="button"
               onClick={handleGoogleSignIn}
               disabled={isSubmitting || isGoogleSubmitting}
-              className="mt-6 flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-6 flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-pink-200 hover:bg-pink-50/30 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isGoogleSubmitting ? (
-                <Loader2 className="h-5 w-5 animate-spin text-[#ec4899]" />
+                <Loader2 className="h-5 w-5 animate-spin text-pink-500" />
               ) : (
                 <svg
                   className="h-5 w-5 shrink-0"
@@ -364,19 +275,16 @@ function LoginFormContent() {
                   />
                 </svg>
               )}
-
               <span>Sign in with Google</span>
             </button>
 
             {/* Divider */}
             <div className="my-6 flex items-center gap-4">
-              <div className="h-px flex-1 bg-slate-200" />
-
+              <div className="h-px flex-1 bg-slate-100" />
               <span className="text-xs font-medium text-slate-400">
                 OR
               </span>
-
-              <div className="h-px flex-1 bg-slate-200" />
+              <div className="h-px flex-1 bg-slate-100" />
             </div>
 
             {/* Form */}
@@ -390,10 +298,8 @@ function LoginFormContent() {
                 >
                   Email address
                 </label>
-
                 <div className="relative">
                   <Mail className="absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-400" />
-
                   <input
                     id="email"
                     type="email"
@@ -402,7 +308,7 @@ function LoginFormContent() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@company.com"
                     autoComplete="email"
-                    className="w-full rounded-xl border border-slate-200 bg-white py-3.5 pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-[#ec4899] focus:ring-4 focus:ring-[#ec4899]/10"
+                    className="w-full rounded-xl border border-slate-200 bg-white py-3.5 pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-pink-200 focus:border-pink-400 focus:ring-4 focus:ring-pink-500/10"
                   />
                 </div>
               </div>
@@ -410,27 +316,22 @@ function LoginFormContent() {
               {/* Password */}
               <div>
                 <div className="mb-2 flex items-center justify-between">
-
                   <label
                     htmlFor="password"
                     className="block text-sm font-medium text-slate-700"
                   >
                     Password
                   </label>
-
                   <Link
                     href="/forgot-password"
-                    className="text-xs font-medium text-slate-500 transition hover:text-[#ec4899] hover:underline"
+                    className="text-xs font-medium text-slate-500 transition hover:text-pink-600 hover:underline"
                   >
                     Forgot password?
                   </Link>
-
                 </div>
 
                 <div className="relative">
-
                   <Lock className="absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-400" />
-
                   <input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
@@ -439,17 +340,12 @@ function LoginFormContent() {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     autoComplete="current-password"
-                    className="w-full rounded-xl border border-slate-200 bg-white py-3.5 pl-11 pr-11 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-[#ec4899] focus:ring-4 focus:ring-[#ec4899]/10"
+                    className="w-full rounded-xl border border-slate-200 bg-white py-3.5 pl-11 pr-11 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-pink-200 focus:border-pink-400 focus:ring-4 focus:ring-pink-500/10"
                   />
-
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    aria-label={
-                      showPassword
-                        ? 'Hide password'
-                        : 'Show password'
-                    }
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-700"
                   >
                     {showPassword ? (
@@ -458,17 +354,14 @@ function LoginFormContent() {
                       <Eye className="h-[18px] w-[18px]" />
                     )}
                   </button>
-
                 </div>
               </div>
-
-              {/* BUG-013 — Terms notice removed from login page (users agreed at signup) */}
 
               {/* Submit */}
               <button
                 type="submit"
                 disabled={isSubmitting || isGoogleSubmitting}
-                className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-[#ec4899] px-4 py-3.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(236,72,153,0.2)] transition hover:bg-[#db2777] hover:shadow-[0_12px_35px_rgba(236,72,153,0.26)] disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-pink-500 via-rose-400 to-amber-400 hover:from-pink-600 hover:to-amber-500 px-4 py-3.5 text-sm font-semibold text-white shadow-[0_8px_25px_rgba(244,114,182,0.3)] transition hover:shadow-[0_10px_30px_rgba(244,114,182,0.4)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isSubmitting ? (
                   <>
@@ -479,7 +372,6 @@ function LoginFormContent() {
                   'Log in'
                 )}
               </button>
-
             </form>
 
             {/* Footer */}
@@ -487,7 +379,7 @@ function LoginFormContent() {
               Don&apos;t have an account?{' '}
               <Link
                 href="/signup"
-                className="font-semibold text-slate-900 underline underline-offset-2 transition hover:text-[#ec4899]"
+                className="font-semibold text-slate-900 underline underline-offset-2 transition hover:text-pink-600"
               >
                 Sign up
               </Link>
@@ -500,13 +392,12 @@ function LoginFormContent() {
   );
 }
 
-// ─── Page export — wraps in Suspense for useSearchParams (App Router req.) ───
 export default function LoginPage() {
   return (
     <Suspense
       fallback={
         <div className="min-h-screen bg-white flex items-center justify-center">
-          <Loader2 className="w-7 h-7 text-[#ec4899] animate-spin" />
+          <Loader2 className="w-7 h-7 text-pink-500 animate-spin" />
         </div>
       }
     >
