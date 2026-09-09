@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { firebaseAuth, firebaseDb } from '@/lib/firebase-admin';
+import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 // How long (in seconds) the session cookies live.
 // Firebase ID tokens expire after 1 hour — keep in sync.
@@ -14,9 +15,33 @@ const COOKIE_BASE = {
 
 const isProduction = process.env.NODE_ENV === 'production';
 
+const PROJECT_ID =
+  process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'tanptal';
+
+const FIREBASE_JWKS = createRemoteJWKSet(
+  new URL(
+    'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'
+  )
+);
+
+/**
+ * Verify a Firebase ID token using public JWKS if Admin SDK is unavailable.
+ */
+async function verifyWithJWKS(token: string): Promise<string | null> {
+  try {
+    const { payload } = await jwtVerify(token, FIREBASE_JWKS, {
+      audience: PROJECT_ID,
+      issuer: `https://securetoken.google.com/${PROJECT_ID}`,
+    });
+    return (payload.sub as string) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * POST /api/auth/session
- * Body: { idToken: string }
+ * Body: { idToken: string, forceOnboarded?: boolean }
  *
  * Verifies the Firebase ID token server-side, checks whether the user has
  * completed onboarding (workplace.onboardedAt exists in Firestore), then
@@ -27,36 +52,63 @@ const isProduction = process.env.NODE_ENV === 'production';
  */
 export async function POST(req: NextRequest) {
   try {
-    if (!firebaseAuth || !firebaseDb) {
-      return NextResponse.json({ error: 'Auth service unavailable.' }, { status: 503 });
-    }
-
     const body = await req.json();
     const idToken: string | undefined = body?.idToken;
+    const forceOnboarded: boolean = !!body?.forceOnboarded;
 
     if (!idToken || typeof idToken !== 'string') {
       return NextResponse.json({ error: 'idToken is required.' }, { status: 400 });
     }
 
-    // Verify token with firebase-admin (Node.js runtime — not Edge).
-    const decoded = await firebaseAuth.verifyIdToken(idToken);
-    const uid = decoded.uid;
+    let uid: string | null = null;
 
-    // Resolve onboarding status from Firestore.
-    let onboarded = false;
-    try {
-      const userSnap = await firebaseDb.doc(`users/${uid}`).get();
-      if (userSnap.exists) {
-        const workplaceId = userSnap.data()?.workplaceId as string | undefined;
-        if (workplaceId) {
-          const wpSnap = await firebaseDb.doc(`workplaces/${workplaceId}`).get();
-          onboarded = !!wpSnap.data()?.onboardedAt;
-        }
+    if (firebaseAuth) {
+      try {
+        const decoded = await firebaseAuth.verifyIdToken(idToken);
+        uid = decoded.uid;
+      } catch {
+        uid = await verifyWithJWKS(idToken);
       }
-    } catch (err) {
-      // Non-fatal: default to not-onboarded. The user will be redirected to
-      // /onboarding where they can re-submit and re-trigger this endpoint.
-      console.error('[session] Firestore onboarding check failed:', err);
+    } else {
+      uid = await verifyWithJWKS(idToken);
+    }
+
+    if (!uid) {
+      const res = NextResponse.json({ error: 'Invalid or expired token.' }, { status: 401 });
+      res.cookies.delete('__session');
+      res.cookies.delete('__onboarded');
+      return res;
+    }
+
+    // Resolve onboarding status
+    let onboarded = forceOnboarded;
+
+    if (!onboarded && firebaseDb) {
+      try {
+        const userSnap = await firebaseDb.doc(`users/${uid}`).get();
+        if (userSnap.exists) {
+          const workplaceId = userSnap.data()?.workplaceId as string | undefined;
+          if (workplaceId) {
+            const wpSnap = await firebaseDb.doc(`workplaces/${workplaceId}`).get();
+            onboarded = !!wpSnap.data()?.onboardedAt;
+          }
+        }
+
+        // Fallback: if user doc was not yet created or missing workplaceId, check workplaces by userId
+        if (!onboarded) {
+          const wpQuery = await firebaseDb.collection('workplaces').where('userId', '==', uid).limit(5).get();
+          if (!wpQuery.empty) {
+            onboarded = wpQuery.docs.some((d) => !!d.data()?.onboardedAt);
+          }
+        }
+      } catch (err) {
+        console.error('[session] Firestore onboarding check failed:', err);
+      }
+    }
+
+    // If Admin SDK wasn't initialized or forceOnboarded was requested, ensure user isn't locked out
+    if (forceOnboarded) {
+      onboarded = true;
     }
 
     const res = NextResponse.json({ ok: true, onboarded });
@@ -66,8 +118,7 @@ export async function POST(req: NextRequest) {
     return res;
   } catch (err: any) {
     console.error('[session] POST error:', err);
-    // Token verification failed (expired, tampered, wrong project, etc.)
-    const res = NextResponse.json({ error: 'Invalid or expired token.' }, { status: 401 });
+    const res = NextResponse.json({ error: 'Session processing error.' }, { status: 500 });
     res.cookies.delete('__session');
     res.cookies.delete('__onboarded');
     return res;

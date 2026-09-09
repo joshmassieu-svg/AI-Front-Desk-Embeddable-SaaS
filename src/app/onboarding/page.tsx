@@ -26,13 +26,14 @@ import {
 export default function OnboardingPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const { currentSite, completeOnboarding, isLoading: siteLoading } = useWebsite();
+  const { currentSite, completeOnboarding, workplace, isLoading: siteLoading } = useWebsite();
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [siteName, setSiteName] = useState('');
   const [domain, setDomain] = useState('');
   const [copied, setCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isFinishing, setIsFinishing] = useState(false);
   const [crawlStatus, setCrawlStatus] = useState<'idle' | 'crawling' | 'completed' | 'background'>('idle');
   const [activeFramework, setActiveFramework] = useState<'html' | 'nextjs' | 'react' | 'wordpress'>('html');
   const [appUrl, setAppUrl] = useState('http://localhost:3000');
@@ -130,8 +131,43 @@ export default function OnboardingPage() {
     }
   };
 
-  const handleFinishOnboarding = () => {
-    router.push('/dashboard/overview');
+  const handleFinishOnboarding = async (targetUrl = '/dashboard/overview') => {
+    if (isFinishing) return;
+    setIsFinishing(true);
+    setError(null);
+
+    try {
+      // Ensure site and workplace onboarding are saved in Firestore if not already completed
+      if (user && (!workplace?.onboardedAt || !currentSite)) {
+        const cleaned = cleanDomain(domain) || 'mywebsite.com';
+        const finalName = siteName.trim() || cleaned.split('.')[0].toUpperCase();
+        try {
+          await completeOnboarding(finalName, cleaned);
+        } catch (saveErr) {
+          console.warn('[onboarding] Warning saving during finish:', saveErr);
+        }
+      }
+
+      // Sync fresh session cookie with forceOnboarded: true
+      if (user) {
+        try {
+          const idToken = await user.getIdToken(true);
+          await fetch('/api/auth/session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idToken, forceOnboarded: true }),
+          });
+        } catch (syncErr) {
+          console.warn('[onboarding] Session sync warning:', syncErr);
+        }
+      }
+
+      // Hard navigation to guarantee fresh cookies are sent and bypass any stale client cache
+      window.location.href = targetUrl;
+    } catch (err: any) {
+      console.error('[onboarding] Error finishing onboarding:', err);
+      window.location.href = targetUrl;
+    }
   };
 
   const siteId = currentSite?.id || 'site_default';
@@ -518,29 +554,44 @@ export default function OnboardingPage() {
               {/* Primary Action Button */}
               <div className="space-y-3 max-w-md mx-auto pt-2">
                 <button
-                  onClick={handleFinishOnboarding}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-slate-950 hover:bg-slate-800 text-white font-semibold py-4 px-6 shadow-md transition hover:shadow-lg text-sm cursor-pointer"
+                  type="button"
+                  disabled={isFinishing}
+                  onClick={() => handleFinishOnboarding('/dashboard/overview')}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-slate-950 hover:bg-slate-800 disabled:opacity-75 disabled:cursor-not-allowed text-white font-semibold py-4 px-6 shadow-md transition hover:shadow-lg text-sm cursor-pointer"
                 >
-                  <span>Head to Dashboard Overview</span>
-                  <ArrowRight className="w-4 h-4" />
+                  {isFinishing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-pink-400" />
+                      <span>Entering Dashboard...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Head to Dashboard Overview</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
                 </button>
 
                 <div className="grid grid-cols-2 gap-2.5 pt-2">
-                  <Link
-                    href="/dashboard/customizer"
-                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition"
+                  <button
+                    type="button"
+                    disabled={isFinishing}
+                    onClick={() => handleFinishOnboarding('/dashboard/customizer')}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-75 text-slate-700 text-xs font-semibold transition cursor-pointer"
                   >
                     <Palette className="w-3.5 h-3.5 text-pink-500" />
                     <span>Customize Look</span>
-                  </Link>
+                  </button>
 
-                  <Link
-                    href="/dashboard/knowledge"
-                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition"
+                  <button
+                    type="button"
+                    disabled={isFinishing}
+                    onClick={() => handleFinishOnboarding('/dashboard/knowledge')}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-75 text-slate-700 text-xs font-semibold transition cursor-pointer"
                   >
                     <BookOpen className="w-3.5 h-3.5 text-amber-500" />
                     <span>Add Knowledge</span>
-                  </Link>
+                  </button>
                 </div>
               </div>
             </div>
