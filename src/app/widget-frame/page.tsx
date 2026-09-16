@@ -145,12 +145,11 @@ function WidgetFrameContent() {
   const primaryColor = config?.primaryColor || '#536df4';
 
   const handleClose = () => {
-    // BUG-20 fixed: use the first allowed domain instead of wildcard '*'
-    const targetOrigin =
-      config?.allowedDomains?.[0]
-        ? (config.allowedDomains[0].startsWith('http') ? config.allowedDomains[0] : `https://${config.allowedDomains[0]}`)
-        : '*';
-    window.parent.postMessage({ type: 'ai-widget-close' }, targetOrigin);
+    // The widget-frame (platform iframe) sends to the parent page (client site).
+    // embed.js validates event.origin === apiOrigin (platform origin) — which is
+    // correct. We use '*' as the target because the iframe cannot reliably know
+    // the parent page's origin at runtime (cross-origin restriction).
+    window.parent.postMessage({ type: 'ai-widget-close' }, '*');
   };
 
   // BUG-12: max message length to protect Gemini token budget

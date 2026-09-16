@@ -40,6 +40,7 @@
   var iframeCreated = false;
   var iframeContainer = null;
   var iframeEl = null;
+  var backdropEl = null; // full-screen overlay to close on outside click
 
   // Configuration default state
   var config = {
@@ -166,6 +167,19 @@
         height: 100%;
         border: none;
         background: transparent;
+      }
+
+      /* BACKDROP — transparent overlay behind the open chat, closes on click */
+      .widget-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        background: transparent;
+        cursor: default;
+        display: none;
+      }
+      .widget-backdrop.visible {
+        display: block;
       }
 
       /* --- LAUNCHER VARIANTS --- */
@@ -456,6 +470,14 @@
   var launcherContainer = document.createElement('div');
   launcherContainer.className = 'launcher-container';
 
+  // Create the full-screen backdrop (outside-click-to-close)
+  backdropEl = document.createElement('div');
+  backdropEl.className = 'widget-backdrop';
+  backdropEl.addEventListener('click', function () {
+    closeWidget();
+  });
+
+  wrapper.appendChild(backdropEl);
   wrapper.appendChild(iframeContainer);
   wrapper.appendChild(launcherContainer);
   shadow.appendChild(wrapper);
@@ -483,6 +505,8 @@
 
     launcherContainer.classList.add('hidden');
     iframeContainer.classList.add('visible');
+    // Show backdrop so clicking anywhere outside the iframe closes the widget
+    if (backdropEl) backdropEl.classList.add('visible');
 
     requestAnimationFrame(function () {
       setTimeout(function () {
@@ -495,6 +519,8 @@
     isOpen = false;
 
     iframeContainer.classList.remove('open');
+    // Hide backdrop immediately
+    if (backdropEl) backdropEl.classList.remove('visible');
 
     setTimeout(function () {
       iframeContainer.classList.remove('visible');
