@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import ReactMarkdown from 'react-markdown';
 import { WebsiteConfig } from '@/lib/types';
 
 interface Message {
@@ -81,11 +82,8 @@ function WidgetFrameContent() {
     isTypingRef.current = isTyping;
   }, [isTyping]);
 
-  useEffect(() => {
-    visitorIdRef.current = getOrCreateVisitorId(siteId);
-    conversationIdRef.current = getStoredConversationId(siteId);
-    console.log('[Widget] init — siteId:', siteId, 'visitorId:', visitorIdRef.current, 'restoredConversationId:', conversationIdRef.current);
-  }, [siteId]);
+  // BUG-15: identity seeding moved into the combined effect below (with initialQuery)
+  // so visitorId is guaranteed set before any query fires.
 
   // Fetch dynamic website configuration. A 503 means the server told us
   // this is a transient failure (e.g. cold-start), worth one quick retry
@@ -147,23 +145,32 @@ function WidgetFrameContent() {
   const primaryColor = config?.primaryColor || '#536df4';
 
   const handleClose = () => {
-    window.parent.postMessage({ type: 'ai-widget-close' }, '*');
+    // BUG-20 fixed: use the first allowed domain instead of wildcard '*'
+    const targetOrigin =
+      config?.allowedDomains?.[0]
+        ? (config.allowedDomains[0].startsWith('http') ? config.allowedDomains[0] : `https://${config.allowedDomains[0]}`)
+        : '*';
+    window.parent.postMessage({ type: 'ai-widget-close' }, targetOrigin);
   };
 
-  const handleSend = async (textToSend?: string) => {
-    const query = textToSend || inputQuery;
-    if (!query.trim() || isTypingRef.current) return;
+  // BUG-12: max message length to protect Gemini token budget
+  const MAX_MESSAGE_LENGTH = 1000;
 
-    const userMsg: Message = { id: Date.now().toString(), sender: 'user', text: query.trim() };
+  const handleSend = async (textToSend?: string) => {
+    const rawQuery = textToSend || inputQuery;
+    const query = rawQuery.trim().slice(0, MAX_MESSAGE_LENGTH);
+    if (!query || isTypingRef.current) return;
+
+    // BUG-08 fixed: use crypto.randomUUID() so IDs are always unique
+    const userMsg: Message = { id: crypto.randomUUID(), sender: 'user', text: query };
     setMessages((prev) => [...prev, userMsg]);
     if (!textToSend) setInputQuery('');
 
     setIsTyping(true);
 
-    // Placeholder agent bubble is created up front (rather than only after
-    // the fetch resolves) so that a mid-stream failure below can update
-    // this same bubble instead of appending a second, confusing message.
-    const agentMsgId = (Date.now() + 1).toString();
+    // Placeholder agent bubble created up front so a mid-stream failure
+    // updates this bubble instead of appending a second confusing one.
+    const agentMsgId = crypto.randomUUID();
     setMessages((prev) => [...prev, { id: agentMsgId, sender: 'agent', text: '' }]);
 
     let aiText = '';
@@ -177,8 +184,10 @@ function WidgetFrameContent() {
         body: JSON.stringify({
           websiteId: siteId,
           visitorId: visitorIdRef.current,
-          message: query.trim(),
+          message: query,
           conversationId: conversationIdRef.current,
+          // BUG-19 fixed: send the parent page URL for context
+          currentUrl: (() => { try { return window.parent.location.href; } catch { return window.location.href; } })()
         }),
       });
 
@@ -189,39 +198,50 @@ function WidgetFrameContent() {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
+      // BUG-07 fixed: buffer incomplete SSE frames across read() calls
+      let sseBuffer = '';
 
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
         streamStarted = true;
 
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n\n');
+        sseBuffer += decoder.decode(value, { stream: true });
+        const frames = sseBuffer.split('\n\n');
+        // Keep the last (potentially incomplete) frame in the buffer
+        sseBuffer = frames.pop() ?? '';
 
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const payload = JSON.parse(line.replace('data: ', ''));
-              if (payload.conversationId && payload.conversationId !== conversationIdRef.current) {
-                conversationIdRef.current = payload.conversationId;
-                storeConversationId(siteId, payload.conversationId);
-                console.log('[Widget] conversationId persisted:', payload.conversationId);
-              }
-              if (payload.sources && Array.isArray(payload.sources) && payload.sources.length > 0) {
-                aiSources = payload.sources;
-              }
-              if (payload.chunk) {
-                aiText += payload.chunk;
-                setMessages((prev) =>
-                  prev.map((msg) => (msg.id === agentMsgId ? { ...msg, text: aiText } : msg))
-                );
-              }
-            } catch (e) {
-              // PAIN POINT: a data: {...} SSE frame can arrive split across
-              // two reader.read() calls upstream; a partial JSON parse here
-              // is expected sometimes and shouldn't be treated as fatal.
-              console.warn('[Widget] SSE frame parse skipped (likely partial frame):', e);
+        for (const frame of frames) {
+          const line = frame.trim();
+          if (!line.startsWith('data: ')) continue;
+
+          // BUG-16 fixed: handle the [DONE] sentinel before JSON.parse
+          if (line === 'data: [DONE]') {
+            console.log('[Widget] stream complete signal received');
+            continue;
+          }
+
+          try {
+            const payload = JSON.parse(line.slice(6));
+            if (payload.conversationId && payload.conversationId !== conversationIdRef.current) {
+              conversationIdRef.current = payload.conversationId;
+              storeConversationId(siteId, payload.conversationId);
+              console.log('[Widget] conversationId persisted:', payload.conversationId);
             }
+            if (payload.sources && Array.isArray(payload.sources) && payload.sources.length > 0) {
+              aiSources = payload.sources;
+            }
+            if (payload.chunk) {
+              aiText += payload.chunk;
+              setMessages((prev) =>
+                prev.map((msg) => (msg.id === agentMsgId ? { ...msg, text: aiText } : msg))
+              );
+            }
+            if (payload.error) {
+              throw new Error(payload.error);
+            }
+          } catch (e) {
+            console.warn('[Widget] SSE frame parse error:', e);
           }
         }
       }
@@ -233,9 +253,6 @@ function WidgetFrameContent() {
       }
 
       if (!aiText) {
-        // A successful-but-empty response is a different situation from a
-        // network/stream failure below, so it gets its own wording rather
-        // than sharing the same generic fallback text.
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === agentMsgId
@@ -246,11 +263,6 @@ function WidgetFrameContent() {
       }
     } catch (err) {
       console.error('Chat stream error:', err);
-      // Update the existing placeholder bubble instead of appending a new
-      // message — previously a mid-stream failure left a stalled partial
-      // answer on screen AND a second, unrelated bubble below it. This also
-      // tells the visitor something actually went wrong instead of masking
-      // the failure behind a generic "thanks for reaching out" reply.
       const fallbackText =
         streamStarted && aiText
           ? `${aiText}\n\n(Connection interrupted — feel free to ask again if that looks cut off.)`
@@ -263,8 +275,15 @@ function WidgetFrameContent() {
     }
   };
 
-  // Receive search queries submitted through launcher bar or URL
+  // BUG-15 fixed: visitor identity is seeded first, THEN we fire any
+  // initialQuery — previously two separate useEffects could race.
   useEffect(() => {
+    // Seed visitor + conversation identity
+    visitorIdRef.current = getOrCreateVisitorId(siteId);
+    conversationIdRef.current = getStoredConversationId(siteId);
+    console.log('[Widget] init — siteId:', siteId, 'visitorId:', visitorIdRef.current, 'restoredConversationId:', conversationIdRef.current);
+
+    // Fire initialQuery only after identity is ready
     if (!initialHandledRef.current) {
       const initialQuery = searchParams.get('initialQuery');
       if (initialQuery && initialQuery.trim()) {
@@ -281,7 +300,7 @@ function WidgetFrameContent() {
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [searchParams]);
+  }, [searchParams, siteId]);
 
   // Auto-scroll chat window to bottom
   useEffect(() => {
@@ -600,7 +619,15 @@ function WidgetFrameContent() {
             <div className="agent-info">
               <div className="agent-avatar">
                 {config?.botAvatar ? (
-                  <img src={config.botAvatar} alt={botName} />
+                  // BUG-17 fixed: hide broken image and fall back to emoji
+                  <img
+                    src={config.botAvatar}
+                    alt={botName}
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.parentElement!.textContent = '✨';
+                    }}
+                  />
                 ) : (
                   '✨'
                 )}
@@ -636,7 +663,28 @@ function WidgetFrameContent() {
                 {messages.map((msg) => (
                   <div key={msg.id} className={`message-row ${msg.sender}`}>
                     <div className={`bubble ${msg.sender}`}>
-                      {msg.text}
+                      {/* BUG-13 fixed: render markdown so bold, lists, code blocks display correctly */}
+                      {msg.sender === 'agent' ? (
+                        <ReactMarkdown
+                          components={{
+                            // Keep links safe and opening in new tab
+                            a: ({ href, children }) => (
+                              <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: primaryColor, textDecoration: 'underline' }}>{children}</a>
+                            ),
+                            // Prevent markdown from injecting block-level elements that break bubble layout
+                            p: ({ children }) => <span style={{ display: 'block', marginBottom: '4px' }}>{children}</span>,
+                            code: ({ children }) => <code style={{ background: 'rgba(0,0,0,0.08)', borderRadius: '4px', padding: '1px 5px', fontSize: '12px', fontFamily: 'monospace' }}>{children}</code>,
+                            pre: ({ children }) => <pre style={{ background: 'rgba(0,0,0,0.08)', borderRadius: '6px', padding: '8px', fontSize: '12px', overflowX: 'auto', marginTop: '4px' }}>{children}</pre>,
+                            ul: ({ children }) => <ul style={{ paddingLeft: '16px', marginTop: '4px' }}>{children}</ul>,
+                            ol: ({ children }) => <ol style={{ paddingLeft: '16px', marginTop: '4px' }}>{children}</ol>,
+                            strong: ({ children }) => <strong style={{ fontWeight: 700 }}>{children}</strong>,
+                          }}
+                        >
+                          {msg.text}
+                        </ReactMarkdown>
+                      ) : (
+                        msg.text
+                      )}
                       {msg.sources && msg.sources.length > 0 && (
                         <div className="msg-sources">
                           <span className="msg-sources-label">Sources:</span>
@@ -675,8 +723,9 @@ function WidgetFrameContent() {
           </div>
 
           <div className="chat-footer">
+            {/* BUG-18 fixed: show product brand, not the customer's own site name */}
             <div className="powered-by">
-              Powered by <strong>{siteName}</strong>
+              Powered by <strong>Tanptal</strong>
             </div>
           </div>
         </div>
@@ -702,6 +751,8 @@ function WidgetFrameContent() {
               type="text"
               placeholder={isTyping ? `${botName} is typing...` : (config?.launcherPlaceholder || 'Ask me anything...')}
               value={inputQuery}
+              // BUG-12: enforce max length in the input field too
+              maxLength={MAX_MESSAGE_LENGTH}
               onChange={(e) => setInputQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
               disabled={isTyping}

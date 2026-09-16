@@ -16,8 +16,10 @@ export async function generateGeminiChatStream(params: {
 
   // 1. Check for Human Handoff triggers
   const queryLower = userQuery.toLowerCase();
+  // BUG-11 fixed: trim trigger words so accidental spaces in the dashboard
+  // don't silently break handoff (e.g. " agent" never matching "agent")
   const shouldHandoff = website.handoffEnabled && website.handoffTriggerWords.some(word =>
-    queryLower.includes(word.toLowerCase())
+    queryLower.includes(word.trim().toLowerCase())
   );
 
   if (shouldHandoff) {
@@ -81,8 +83,11 @@ Instructions:
     // guarantees a future outage. Default is overridable via env var so a
     // deprecation doesn't require a code change, just an env var update +
     // redeploy.
-    const defaultModel = process.env.GEMINI_CHAT_MODEL || 'gemini-3.6-flash';
-    const proModel = process.env.GEMINI_CHAT_MODEL_PRO || 'gemini-3.6-flash';
+    // BUG-05 fixed: gemini-3.6-flash does not exist — changed default to a
+    // real, currently available model. Override via GEMINI_CHAT_MODEL env var
+    // when a newer model ships, without needing a code change.
+    const defaultModel = process.env.GEMINI_CHAT_MODEL || 'gemini-2.0-flash';
+    const proModel = process.env.GEMINI_CHAT_MODEL_PRO || 'gemini-2.0-flash';
     const modelName = website.model === 'gemini-1.5-pro' || website.model === 'gemini-2.5-pro' ? proModel : defaultModel;
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse&key=${apiKey}`;
 

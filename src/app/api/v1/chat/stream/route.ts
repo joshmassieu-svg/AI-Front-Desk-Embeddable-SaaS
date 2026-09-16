@@ -30,6 +30,10 @@ export async function POST(req: NextRequest) {
     if (!message) {
       return NextResponse.json({ error: 'Message content required' }, { status: 400 });
     }
+    // BUG-12 server-side: cap message length to match client limit
+    if (message.length > 1000) {
+      return NextResponse.json({ error: 'Message too long (max 1000 characters)' }, { status: 400 });
+    }
     if (!websiteId) {
       return NextResponse.json({ error: 'websiteId parameter required' }, { status: 400 });
     }
@@ -75,15 +79,28 @@ export async function POST(req: NextRequest) {
 
     // Save visitor message — awaited so we know it landed before we spend
     // money generating a response for a message that might not have saved.
-    try {
-      await db.addMessageAsync(activeConvId, {
-        conversationId: activeConvId,
-        sender: 'visitor',
-        content: message,
-      });
-    } catch (err) {
-      console.error(`[chat/stream] PAIN POINT: failed to persist visitor message for conversation ${activeConvId}`, err);
-      // Non-fatal — still try to answer the visitor even if the write failed.
+    // BUG-09 fixed: retry once on failure instead of silently moving on.
+    let messageSaved = false;
+    for (let attempt = 0; attempt <= 1; attempt++) {
+      try {
+        await db.addMessageAsync(activeConvId, {
+          conversationId: activeConvId,
+          sender: 'visitor',
+          content: message,
+        });
+        messageSaved = true;
+        break;
+      } catch (err) {
+        if (attempt === 0) {
+          console.warn(`[chat/stream] visitor message save failed, retrying once...`, err);
+          await new Promise(r => setTimeout(r, 300));
+        } else {
+          console.error(`[chat/stream] PAIN POINT: failed to persist visitor message after retry for conversation ${activeConvId}`, err);
+        }
+      }
+    }
+    if (!messageSaved) {
+      console.error(`[chat/stream] proceeding without saved visitor message — conversation history will be incomplete`);
     }
 
     // 2. Retrieve relevant knowledge base context via vector search
@@ -104,61 +121,69 @@ export async function POST(req: NextRequest) {
 
     const stream = new ReadableStream({
       async start(controller) {
-        // Send initial metadata chunk with conversation ID and sources
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ conversationId: activeConvId, sources, status: conv.status })}\n\n`)
-        );
+        // BUG-03 fixed: wrap entire start() in try/catch so any thrown error
+        // sends an error SSE frame to the client instead of silently dying.
+        try {
+          // Send initial metadata chunk with conversation ID and sources
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ conversationId: activeConvId, sources, status: conv.status })}\n\n`)
+          );
 
-        let fullAiText = '';
+          let fullAiText = '';
 
-        const result = await generateGeminiChatStream({
-          website,
-          userQuery: message,
-          history: conv.messages || [],
-          retrievedContext: retrieved.contextText,
-          onChunk: (chunkText) => {
-            fullAiText += chunkText;
+          const result = await generateGeminiChatStream({
+            website,
+            userQuery: message,
+            history: conv.messages || [],
+            retrievedContext: retrieved.contextText,
+            onChunk: (chunkText) => {
+              fullAiText += chunkText;
+              controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify({ chunk: chunkText })}\n\n`)
+              );
+            }
+          });
+
+          if (result.degraded) {
+            console.warn(`[chat/stream] PAIN POINT: response was degraded-mode for conversation ${activeConvId} (Gemini call failed or no API key)`);
+          }
+
+          if (result.shouldHandoff) {
+            try {
+              await db.updateConversationStatus(activeConvId, 'human_requested');
+              console.log(`[chat/stream] conversation ${activeConvId} marked human_requested`);
+            } catch (err) {
+              console.error(`[chat/stream] PAIN POINT: failed to persist human_requested status for conversation ${activeConvId}`, err);
+            }
             controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ chunk: chunkText })}\n\n`)
+              encoder.encode(`data: ${JSON.stringify({ status: 'human_requested' })}\n\n`)
             );
           }
-        });
 
-        if (result.degraded) {
-          console.warn(`[chat/stream] PAIN POINT: response was degraded-mode for conversation ${activeConvId} (Gemini call failed or no API key)`);
-        }
-
-        // If human handoff was triggered, update conversation status —
-        // now awaited so the client's status update in this same SSE
-        // stream is guaranteed to reflect what's actually in Firestore.
-        if (result.shouldHandoff) {
           try {
-            await db.updateConversationStatus(activeConvId, 'human_requested');
-            console.log(`[chat/stream] conversation ${activeConvId} marked human_requested`);
+            await db.addMessageAsync(activeConvId, {
+              conversationId: activeConvId,
+              sender: 'ai',
+              content: fullAiText || result.fullResponse,
+              ...(sources.length > 0 ? { sources } : {}),
+            });
           } catch (err) {
-            console.error(`[chat/stream] PAIN POINT: failed to persist human_requested status for conversation ${activeConvId}`, err);
+            console.error(`[chat/stream] PAIN POINT: failed to persist AI message for conversation ${activeConvId}`, err);
           }
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ status: 'human_requested' })}\n\n`)
-          );
-        }
 
-        // Save AI response message, including the sources actually used —
-        // previously always saved as an empty array regardless of what
-        // knowledge base content (if any) informed the answer.
-        try {
-          await db.addMessageAsync(activeConvId, {
-            conversationId: activeConvId,
-            sender: 'ai',
-            content: fullAiText || result.fullResponse,
-            ...(sources.length > 0 ? { sources } : {}),
-          });
-        } catch (err) {
-          console.error(`[chat/stream] PAIN POINT: failed to persist AI message for conversation ${activeConvId}`, err);
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+        } catch (streamErr: any) {
+          // BUG-03: surface the error to the client as a proper SSE frame
+          console.error('[chat/stream] PAIN POINT: unhandled error inside stream start():', streamErr);
+          try {
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ error: 'An unexpected error occurred. Please try again.' })}\n\n`)
+            );
+            controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+          } catch (_) { /* controller may already be closed */ }
+        } finally {
+          controller.close();
         }
-
-        controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-        controller.close();
       }
     });
 
