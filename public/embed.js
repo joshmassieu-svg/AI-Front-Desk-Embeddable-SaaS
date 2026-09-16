@@ -177,9 +177,12 @@
         background: transparent;
         cursor: default;
         display: none;
+        pointer-events: none;
       }
       .widget-backdrop.visible {
         display: block;
+        /* Override the parent wrapper's pointer-events: none so clicks land here */
+        pointer-events: auto;
       }
 
       /* --- LAUNCHER VARIANTS --- */
