@@ -46,6 +46,12 @@ export interface Workplace {
    * localStorage 'flowdexx_onboarded' flag which broke on new devices.
    */
   onboardedAt?: string;
+  /** Stripe customer ID — set on first successful checkout */
+  stripeCustomerId?: string;
+  /** Active Stripe subscription ID */
+  stripeSubscriptionId?: string;
+  /** Mirrors Stripe subscription status: 'active' | 'past_due' | 'canceled' | 'trialing' | etc. */
+  subscriptionStatus?: string;
   createdAt: string;
   updatedAt: string;
 }

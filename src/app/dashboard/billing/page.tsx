@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { CreditCard, Check, Zap, Star, ShieldCheck, HelpCircle, ArrowRight, Sparkles } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { CreditCard, Check, Zap, Star, ShieldCheck, ExternalLink, Loader2, Sparkles } from 'lucide-react';
 import { useWebsite } from '@/context/website-context';
 
 type PlanId = 'free' | 'starter' | 'growth' | 'pro';
@@ -113,13 +114,37 @@ const COMPARISON_ROWS: { label: string; key: keyof PlanDef | 'check_all'; toolti
 ];
 
 export default function BillingPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { currentSiteId, workplace, updateWorkplacePlan } = useWebsite();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
+  const [isPortalLoading, setIsPortalLoading] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [convCount, setConvCount] = useState(1420);
   const [kbCount, setKbCount] = useState(18);
 
   const currentPlan: PlanId = (workplace?.plan as PlanId) || 'free';
+  const hasStripeSubscription = !!(workplace as any)?.stripeSubscriptionId;
+
+  // Show toast based on URL params from Stripe redirect
+  useEffect(() => {
+    if (searchParams.get('success') === '1') {
+      setToast({ message: '🎉 Payment successful! Your plan has been upgraded.', type: 'success' });
+      router.replace('/dashboard/billing');
+    } else if (searchParams.get('canceled') === '1') {
+      setToast({ message: 'Checkout was canceled. No charge was made.', type: 'error' });
+      router.replace('/dashboard/billing');
+    }
+  }, [searchParams, router]);
+
+  // Auto-dismiss toast
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 5000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   useEffect(() => {
     if (workplace?.planBillingCycle) {
@@ -168,20 +193,62 @@ export default function BillingPage() {
     });
   }
 
+  /**
+   * Paid plans → redirect to Stripe Checkout.
+   * Free plan → simple Firestore downgrade (with confirmation).
+   */
   const handleSelectPlan = async (planId: PlanId) => {
-    if (planId === currentPlan || isUpdating) return;
-    setIsUpdating(true);
+    if (planId === currentPlan || isUpdating || loadingPlan) return;
+
+    if (planId === 'free') {
+      const confirmed = window.confirm(
+        'Downgrade to Free plan? You will lose access to paid features at the end of your billing period. To cancel your subscription, use the Manage Billing button.'
+      );
+      if (!confirmed) return;
+      setIsUpdating(true);
+      try {
+        await updateWorkplacePlan(planId, billingCycle);
+      } finally {
+        setIsUpdating(false);
+      }
+      return;
+    }
+
+    // Paid plan — go to Stripe Checkout
+    setLoadingPlan(planId);
     try {
-      await updateWorkplacePlan(planId, billingCycle);
+      const res = await fetch('/api/stripe/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId, billingCycle }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create checkout session');
+      if (data.url) window.location.href = data.url;
+    } catch (err: any) {
+      console.error(err);
+      setToast({ message: err.message || 'Something went wrong. Please try again.', type: 'error' });
     } finally {
-      setIsUpdating(false);
+      setLoadingPlan(null);
     }
   };
 
   const handleCycleChange = async (cycle: 'monthly' | 'annual') => {
     setBillingCycle(cycle);
-    if (workplace) {
-      await updateWorkplacePlan(currentPlan, cycle);
+  };
+
+  const openBillingPortal = async () => {
+    setIsPortalLoading(true);
+    try {
+      const res = await fetch('/api/stripe/create-portal', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to open billing portal');
+      if (data.url) window.location.href = data.url;
+    } catch (err: any) {
+      console.error(err);
+      setToast({ message: err.message || 'Could not open billing portal.', type: 'error' });
+    } finally {
+      setIsPortalLoading(false);
     }
   };
 
@@ -190,6 +257,21 @@ export default function BillingPage() {
 
   return (
     <div className="space-y-10 max-w-6xl mx-auto font-sans pb-20">
+
+      {/* Toast notification */}
+      {toast && (
+        <div
+          className={`fixed top-5 right-5 z-50 px-5 py-3.5 rounded-2xl shadow-xl text-sm font-semibold flex items-center gap-3 animate-fade-in ${
+            toast.type === 'success'
+              ? 'bg-emerald-600 text-white'
+              : 'bg-red-600 text-white'
+          }`}
+        >
+          {toast.message}
+          <button onClick={() => setToast(null)} className="ml-2 opacity-70 hover:opacity-100 text-lg leading-none">&times;</button>
+        </div>
+      )}
+
       {/* Top Header & Title */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 pb-6">
         <div>
@@ -206,8 +288,8 @@ export default function BillingPage() {
           </div>
         </div>
 
-        {/* Current Active Plan Badge & Trial Badge */}
-        <div className="flex items-center gap-3">
+        {/* Badges + Manage Billing */}
+        <div className="flex items-center gap-3 flex-wrap">
           {isTrialActive && (
             <div className="bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold px-3.5 py-1.5 rounded-xl flex items-center gap-2 shadow-xs">
               <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
@@ -221,6 +303,21 @@ export default function BillingPage() {
             <span>Active Tier:</span>
             <span className="font-extrabold uppercase text-emerald-900">{activePlanDef.name}</span>
           </div>
+          {hasStripeSubscription && (
+            <button
+              id="manage-billing-portal-btn"
+              onClick={openBillingPortal}
+              disabled={isPortalLoading}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white transition shadow-xs disabled:opacity-60"
+            >
+              {isPortalLoading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <ExternalLink className="w-3.5 h-3.5" />
+              )}
+              Manage Billing
+            </button>
+          )}
         </div>
       </div>
 
@@ -385,9 +482,10 @@ export default function BillingPage() {
               </div>
 
               <button
+                id={`select-plan-${plan.id}-btn`}
                 onClick={() => handleSelectPlan(plan.id)}
-                disabled={isCurrent || isUpdating}
-                className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold transition shadow-xs ${
+                disabled={isCurrent || !!loadingPlan || isUpdating}
+                className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold transition shadow-xs flex items-center justify-center gap-2 ${
                   isCurrent
                     ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-default'
                     : plan.isPopular
@@ -395,7 +493,14 @@ export default function BillingPage() {
                     : 'bg-slate-900 hover:bg-slate-800 text-white'
                 }`}
               >
-                {isCurrent ? '✓ Currently Active' : isUpdating ? 'Updating...' : `Select ${plan.name}`}
+                {loadingPlan === plan.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                {isCurrent
+                  ? '✓ Currently Active'
+                  : loadingPlan === plan.id
+                  ? 'Redirecting...'
+                  : plan.id === 'free'
+                  ? 'Downgrade to Free'
+                  : `Upgrade to ${plan.name}`}
               </button>
             </div>
           );
