@@ -3,11 +3,6 @@ import { getStripe } from '@/lib/stripe';
 import { firebaseDb } from '@/lib/firebase-admin';
 import Stripe from 'stripe';
 
-// Vercel requires this to read the raw body for Stripe signature verification
-export const config = {
-  api: { bodyParser: false },
-};
-
 /**
  * Maps Stripe price ID back to your plan slug.
  * We check all 6 env vars to find the matching slug.
