@@ -37,9 +37,10 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { planId, billingCycle } = body as {
+    const { planId, billingCycle, endorselyReferral } = body as {
       planId: 'starter' | 'growth' | 'pro';
       billingCycle: 'monthly' | 'annual';
+      endorselyReferral?: string | null;
     };
 
     if (!planId || !billingCycle) {
@@ -80,9 +81,16 @@ export async function POST(req: NextRequest) {
         uid,
         planId,
         billingCycle,
+        ...(endorselyReferral ? { endorsely_referral: endorselyReferral } : {}),
       },
       subscription_data: {
-        metadata: { workplaceId, uid, planId, billingCycle },
+        metadata: {
+          workplaceId,
+          uid,
+          planId,
+          billingCycle,
+          ...(endorselyReferral ? { endorsely_referral: endorselyReferral } : {}),
+        },
       },
       success_url: `${appUrl}/dashboard/billing?session_id={CHECKOUT_SESSION_ID}&success=1`,
       cancel_url: `${appUrl}/dashboard/billing?canceled=1`,

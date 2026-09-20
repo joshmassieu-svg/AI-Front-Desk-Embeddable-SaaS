@@ -217,10 +217,14 @@ export default function BillingPage() {
     // Paid plan — go to Stripe Checkout
     setLoadingPlan(planId);
     try {
+      const endorselyReferral = typeof window !== 'undefined'
+        ? (window as any).endorsely_referral ?? null
+        : null;
+
       const res = await fetch('/api/stripe/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId, billingCycle }),
+        body: JSON.stringify({ planId, billingCycle, endorselyReferral }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to create checkout session');
