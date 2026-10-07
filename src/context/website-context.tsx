@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { WebsiteConfig, SubscriptionPlanId, BillingCycle } from '@/lib/types';
-import { useAuth } from '@/context/auth-context';
+import { useAuth, notifyHubSpot } from '@/context/auth-context';
 import {
   getOrCreateUserWorkplace,
   updateWebsiteInFirestore,
@@ -348,6 +348,9 @@ export function WebsiteProvider({ children }: { children: React.ReactNode }) {
         // Non-fatal: the auth-context onIdTokenChanged listener will
         // retry the sync on the next token rotation.
       }
+
+      // Send site + onboarding details to HubSpot (non-blocking, non-fatal).
+      void notifyHubSpot(user, 'onboarded');
 
       return website;
     } catch (err) {

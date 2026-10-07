@@ -11,6 +11,7 @@ import {
   sendPasswordResetEmail,
   GoogleAuthProvider,
   signInWithPopup,
+  getAdditionalUserInfo,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
@@ -45,6 +46,25 @@ async function syncSessionCookie(user: User): Promise<void> {
     console.error('[auth] Failed to sync session cookie:', err);
   }
 }
+
+/**
+ * Tell the server to push this user to HubSpot. Fire-and-forget: a CRM
+ * problem must never block or slow down sign-up.
+ */
+async function notifyHubSpot(user: User, event: 'signup' | 'onboarded'): Promise<void> {
+  try {
+    const idToken = await user.getIdToken();
+    await fetch('/api/hubspot/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken, event }),
+    });
+  } catch (err) {
+    console.warn('[auth] HubSpot sync failed (non-fatal):', err);
+  }
+}
+
+export { notifyHubSpot };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -82,6 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signup = async (email: string, pass: string) => {
     const cred = await createUserWithEmailAndPassword(auth, email, pass);
     await syncSessionCookie(cred.user);
+    void notifyHubSpot(cred.user, 'signup');
     return cred;
   };
 
@@ -89,6 +110,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const provider = new GoogleAuthProvider();
     const cred = await signInWithPopup(auth, provider);
     await syncSessionCookie(cred.user);
+    // Only a first-time Google login counts as a new sign-up.
+    if (getAdditionalUserInfo(cred)?.isNewUser) {
+      void notifyHubSpot(cred.user, 'signup');
+    }
     return cred;
   };
 

@@ -2,6 +2,39 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe';
 import { firebaseDb } from '@/lib/firebase-admin';
 import Stripe from 'stripe';
+import { firebaseAuth } from '@/lib/firebase-admin';
+import { syncHubSpotContact } from '@/lib/hubspot';
+
+/**
+ * Push plan/billing info to HubSpot. Never throws — CRM trouble must not
+ * make Stripe retry the webhook or block plan updates.
+ */
+async function pushBillingToHubSpot(
+  workplaceId: string,
+  fields: { plan?: string; billingCycle?: string; status?: string },
+  fallbackEmail?: string | null
+) {
+  try {
+    let email: string | null | undefined = fallbackEmail;
+    if (firebaseDb) {
+      const wp = (await firebaseDb.doc(`workplaces/${workplaceId}`).get()).data();
+      if (wp?.userId && firebaseAuth) {
+        try {
+          email = (await firebaseAuth.getUser(wp.userId)).email || email;
+        } catch { /* use fallback email */ }
+      }
+    }
+    if (!email) return;
+    await syncHubSpotContact({
+      email,
+      flowdexx_plan: fields.plan,
+      flowdexx_billing_cycle: fields.billingCycle,
+      flowdexx_subscription_status: fields.status,
+    });
+  } catch (err) {
+    console.warn('[stripe/webhook] HubSpot push failed (non-fatal):', err);
+  }
+}
 
 /**
  * Maps Stripe price ID back to your plan slug.
@@ -55,6 +88,12 @@ async function updateWorkplaceFromSubscription(
   });
 
   console.log(`[stripe/webhook] Updated workplace ${workplaceId}: plan=${planId}, status=${status}`);
+
+  await pushBillingToHubSpot(workplaceId, {
+    plan: status === 'active' || status === 'trialing' ? planId : 'free',
+    billingCycle,
+    status,
+  });
 }
 
 /**
@@ -138,6 +177,7 @@ export async function POST(req: NextRequest) {
         });
 
         console.log(`[stripe/webhook] Subscription canceled for workspace ${workplaceId}`);
+        await pushBillingToHubSpot(workplaceId, { plan: 'free', status: 'canceled' });
         break;
       }
 
@@ -166,6 +206,7 @@ export async function POST(req: NextRequest) {
         });
 
         console.log(`[stripe/webhook] Payment failed for workspace ${workplaceId}`);
+        await pushBillingToHubSpot(workplaceId, { status: 'past_due' }, invoice.customer_email);
         break;
       }
 

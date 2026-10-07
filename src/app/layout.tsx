@@ -34,6 +34,13 @@ export default function RootLayout({
           data-endorsely="a8aa5756-c269-409e-81f8-41393f8f215f"
           strategy="afterInteractive"
         />
+        <Script
+          id="hs-script-loader"
+          src="https://js-na3.hs-scripts.com/343667773.js"
+          strategy="afterInteractive"
+          async
+          defer
+        />
       </head>
       <body className="bg-[#FAF8F5] text-stone-900 min-h-screen antialiased selection:bg-rose-100 selection:text-rose-950">
         <Providers>{children}</Providers>
