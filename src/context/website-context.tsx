@@ -78,6 +78,7 @@ const defaultSite: WebsiteConfig = {
   temperature: 0.3,
   maxTokens: 512,
   restrictedTopics: [],
+  enhancedIntelligence: false,
   suggestedQuestions: ['What features do you offer?', 'Pricing details', 'How to contact support?'],
   handoffEnabled: true,
   handoffTriggerWords: ['human', 'agent', 'support rep'],

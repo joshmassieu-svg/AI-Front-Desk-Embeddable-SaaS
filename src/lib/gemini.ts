@@ -47,6 +47,24 @@ export async function generateGeminiChatStream(params: {
     console.warn(`[gemini] PAIN POINT: empty retrievedContext for query "${userQuery.slice(0, 80)}" — model has no knowledge base grounding for this answer`);
   }
 
+  const sourceOfTruth = website.enhancedIntelligence
+    ? `Source of truth (Enhanced Intelligence is ON):
+- Use the knowledge base excerpts below under "Knowledge Base Context" as
+  your first and most trusted source.
+- If the excerpts don't fully answer the question, you may use your general
+  knowledge to give a helpful, accurate answer. Do not mention or hint
+  whether an answer came from the knowledge base or general knowledge.
+- For facts specific to this business (prices, policies, hours, features,
+  availability, contact details), NEVER guess. If they are not in the
+  excerpts, say plainly that you don't have that information.
+- Always respect the restricted topics and the persona rules above.`
+    : `Source of truth:
+- Answer using ONLY the knowledge base excerpts provided below under
+  "Knowledge Base Context". Do not use outside knowledge, prior training
+  data, or guesses to fill in gaps.
+- If the excerpts don't contain the answer, say plainly that you don't
+  have that information rather than making something up.`;
+
   const systemInstruction = `${website.systemPrompt}
 
 System Parameters:
@@ -54,12 +72,7 @@ System Parameters:
 - Allowed Domains: ${website.allowedDomains.join(', ')}
 - Restricted Topics to NEVER discuss: ${website.restrictedTopics.join(', ')}
 
-Source of truth:
-- Answer using ONLY the knowledge base excerpts provided below under
-  "Knowledge Base Context". Do not use outside knowledge, prior training
-  data, or guesses to fill in gaps.
-- If the excerpts don't contain the answer, say plainly that you don't
-  have that information rather than making something up.
+${sourceOfTruth}
 
 Knowledge Base Context:
 ${hasContext ? retrievedContext : '(No relevant knowledge base content was found for this question.)'}

@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Cpu, Shield, Sliders, Save, Check, AlertTriangle, Globe, Sparkles } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Cpu, Shield, Sliders, Save, Check, AlertTriangle, Globe, Sparkles, Brain } from 'lucide-react';
 import { useWebsite } from '@/context/website-context';
 
 export default function AISettingsPage() {
-  const { currentSiteId, updateWebsite } = useWebsite();
+  const { currentSiteId, currentSite, updateWebsite } = useWebsite();
   const [model, setModel] = useState<'gemini-1.5-flash' | 'gemini-1.5-pro' | 'gemini-2.0-flash' | 'gemini-2.5-pro'>('gemini-1.5-flash');
   const [temperature, setTemperature] = useState(0.3);
   const [maxTokens, setMaxTokens] = useState(1024);
@@ -19,6 +19,21 @@ Guidelines:
   );
   const [restrictedTopics, setRestrictedTopics] = useState('Competitor financial details, Internal server passwords, Unreleased roadmap secrets');
   const [allowedDomains, setAllowedDomains] = useState('flowdexx.com, localhost, 127.0.0.1');
+  const [enhancedIntelligence, setEnhancedIntelligence] = useState(false);
+
+  // Load the site's saved settings so the page (and the toggle) show what is
+  // really saved instead of hardcoded defaults.
+  useEffect(() => {
+    if (!currentSite) return;
+    setEnhancedIntelligence(currentSite.enhancedIntelligence === true);
+    if (currentSite.model) setModel(currentSite.model);
+    if (typeof currentSite.temperature === 'number') setTemperature(currentSite.temperature);
+    if (typeof currentSite.maxTokens === 'number') setMaxTokens(currentSite.maxTokens);
+    if (currentSite.systemPrompt) setSystemPrompt(currentSite.systemPrompt);
+    if (Array.isArray(currentSite.restrictedTopics)) setRestrictedTopics(currentSite.restrictedTopics.join(', '));
+    if (Array.isArray(currentSite.allowedDomains)) setAllowedDomains(currentSite.allowedDomains.join(', '));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentSite?.id]);
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -34,6 +49,7 @@ Guidelines:
         temperature,
         maxTokens,
         systemPrompt,
+        enhancedIntelligence,
         restrictedTopics: restrictedTopics.split(',').map(s => s.trim()),
         allowedDomains: allowedDomains.split(',').map(s => s.trim()),
       });
@@ -175,6 +191,33 @@ Guidelines:
             <span className="text-[10px] text-slate-400">Domains authorized to load the widget script snippet.</span>
           </div>
         </div>
+      </div>
+
+      {/* Enhanced Intelligence */}
+      <div className="glass-panel p-6 rounded-2xl border border-slate-200 flex items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <div className="p-2 bg-brand-600 text-white rounded-xl shrink-0">
+            <Brain className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">Enhanced Intelligence</h3>
+            <p className="text-xs text-slate-600 mt-0.5 leading-relaxed max-w-xl">
+              When on, your chatbot can also use the AI&apos;s general knowledge when your knowledge base doesn&apos;t have the answer.
+              Business-specific details (prices, policies, hours) are never guessed. When off, it answers only from your knowledge base.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={enhancedIntelligence}
+          aria-label="Enhanced Intelligence"
+          id="enhanced-intelligence-toggle"
+          onClick={() => setEnhancedIntelligence(v => !v)}
+          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition cursor-pointer ${enhancedIntelligence ? 'bg-brand-600' : 'bg-slate-300'}`}
+        >
+          <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${enhancedIntelligence ? 'translate-x-5' : 'translate-x-0.5'}`} />
+        </button>
       </div>
 
       {/* System Prompt Editor */}

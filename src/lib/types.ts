@@ -49,6 +49,9 @@ export interface WebsiteConfig {
   temperature: number;
   maxTokens: number;
   restrictedTopics: string[];
+  // When true, the bot may use the AI's general knowledge in addition to the
+  // knowledge base. Undefined/false = knowledge base only (default).
+  enhancedIntelligence?: boolean;
   suggestedQuestions: string[];
   
   // Human Handoff Config

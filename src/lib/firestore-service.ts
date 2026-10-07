@@ -106,6 +106,7 @@ export const createInitialWebsiteConfig = (workplaceId: string, name: string, do
     // doesn't silently produce empty answers.
     maxTokens: 1024,
     restrictedTopics: [],
+    enhancedIntelligence: false,
     suggestedQuestions: ['What features do you offer?', 'Pricing details', 'How to contact support?'],
     handoffEnabled: true,
     handoffTriggerWords: ['human', 'agent', 'support rep', 'real person'],
