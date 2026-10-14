@@ -35,15 +35,24 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
  * Fire-and-forget safe — errors are logged but never surface to the UI.
  */
 async function syncSessionCookie(user: User): Promise<void> {
-  try {
-    const idToken = await user.getIdToken();
-    await fetch('/api/auth/session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idToken }),
-    });
-  } catch (err) {
-    console.error('[auth] Failed to sync session cookie:', err);
+  // Never wait forever: give up after 8s and retry once.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+        signal: controller.signal,
+      });
+      if (res.ok) return;
+    } catch (err) {
+      console.error('[auth] Failed to sync session cookie:', err);
+    } finally {
+      clearTimeout(timer);
+    }
   }
 }
 

@@ -71,7 +71,7 @@ function LoginFormContent() {
     try {
       setIsSubmitting(true);
       await login(email, password);
-      router.push('/dashboard/overview');
+      window.location.assign('/dashboard/overview');
     } catch (err: any) {
       console.error('Login error:', err);
 
